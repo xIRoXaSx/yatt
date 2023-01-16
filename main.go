@@ -1,0 +1,55 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+
+	"github.com/xiroxasx/gport/importer"
+)
+
+func parseFlags() (a importer.Options) {
+	flag.BoolVar(&a.Indent, "indent", false, "whether to retain indention or not")
+	flag.BoolVar(&a.NoStats, "nostats", false, "do not print stats at the end of the execution")
+	flag.StringVar(&a.InPath, "in", "", "the root path")
+	flag.StringVar(&a.OutPath, "out", "", "the output path. If not used, in will be overwritten")
+	flag.Parse()
+	return
+}
+
+func main() {
+	if len(os.Args) == 1 {
+		return
+	}
+
+	opts := parseFlags()
+	if opts.OutPath == "" {
+		r := bufio.NewReader(os.Stdin)
+		fmt.Printf("Are you sure that you want to overwrite %s? [y/N] ", opts.InPath)
+		b, err := r.ReadBytes('\n')
+		if err != nil {
+			log.Fatalf("unable to read input: %v\n", err)
+		}
+		if bytes.ToLower([]byte{b[0]})[0] != 'y' {
+			log.Fatalln("canceled")
+		}
+		opts.OutPath = opts.InPath
+	}
+
+	if opts.InPath == "" {
+		log.Fatalln("in path needs to be defined")
+	}
+
+	opts.InPath = filepath.Clean(opts.InPath)
+	opts.OutPath = filepath.Clean(opts.OutPath)
+
+	imp := importer.New(&opts)
+	err := imp.Start()
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
