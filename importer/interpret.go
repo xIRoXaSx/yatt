@@ -5,12 +5,19 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
-func (i *Importer) interpretFile(inPath string, indent []byte, out io.Writer) (err error) {
-	cont, err := os.ReadFile(inPath)
+const (
+	ignoreStatement = "ignore"
+	ignoreStart     = "start"
+	ignoreEnd       = "end"
+)
+
+func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (err error) {
+	cont, err := os.ReadFile(stmnt)
 	if err != nil {
-		log.Printf("warn: unable to read file %s: %v\n", inPath, err)
+		log.Printf("warn: unable to read file %s: %v\n", stmnt, err)
 		return err
 	}
 	// Prepend indention to all linebreaks.
@@ -30,10 +37,26 @@ func (i *Importer) interpretFile(inPath string, indent []byte, out io.Writer) (e
 		linePart := l[len(indent):]
 		prefix := i.matchedImportPrefix(linePart)
 		if prefix == nil {
+			// Still in an ignore block.
+			if i.state.ignoreIndex[stmnt] == 1 {
+				continue
+			}
 			_, err = out.Write(l)
 		} else {
-			// Check if file of statement exists and read it if it does.
+			// Trim statement and check against internal commands.
 			statement := string(bytes.Trim(bytes.TrimPrefix(linePart, prefix), string(append(cutSet, ' '))))
+			split := strings.Split(statement, " ")
+			if len(split) > 1 && split[0] == ignoreStatement {
+				switch split[1] {
+				case ignoreStart:
+					i.state.ignoreIndex[stmnt] = 1
+					continue
+				case ignoreEnd:
+					i.state.ignoreIndex[stmnt] = 0
+					continue
+				}
+			}
+
 			err = i.interpretFile(statement, indent, out)
 			if err != nil {
 				return err

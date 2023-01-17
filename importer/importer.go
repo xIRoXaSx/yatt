@@ -13,6 +13,7 @@ import (
 type Importer struct {
 	opts     *Options
 	prefixes []string
+	state    state
 }
 
 type Options struct {
@@ -22,10 +23,17 @@ type Options struct {
 	NoStats bool
 }
 
+type state struct {
+	ignoreIndex map[string]int8
+}
+
 func New(opts *Options) Importer {
 	return Importer{
 		opts:     opts,
 		prefixes: []string{"#import", "# import"},
+		state: state{
+			ignoreIndex: map[string]int8{},
+		},
 	}
 }
 
@@ -52,6 +60,7 @@ func (i *Importer) Start() (err error) {
 	return
 }
 
+// runDirMode runs the import for each file inside the Options.InPath.
 func (i *Importer) runDirMode() (err error) {
 	const dirPerm = os.FileMode(0700)
 
@@ -93,6 +102,7 @@ func (i *Importer) runDirMode() (err error) {
 	return
 }
 
+// runFileMode runs the import with the targeted Options.OutPath.
 func (i *Importer) runFileMode() (err error) {
 	out, err := os.OpenFile(i.opts.OutPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
