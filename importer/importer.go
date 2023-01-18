@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,13 @@ type Options struct {
 
 type state struct {
 	ignoreIndex map[string]int8
+	vars        map[string][]command
+	*sync.Mutex
+}
+
+type command struct {
+	name  string
+	value string
 }
 
 func New(opts *Options) Importer {
@@ -33,6 +41,8 @@ func New(opts *Options) Importer {
 		prefixes: []string{"#import", "# import"},
 		state: state{
 			ignoreIndex: map[string]int8{},
+			vars:        map[string][]command{},
+			Mutex:       &sync.Mutex{},
 		},
 	}
 }

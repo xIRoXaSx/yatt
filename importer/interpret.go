@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-const (
-	ignoreStatement = "ignore"
-	ignoreStart     = "start"
-	ignoreEnd       = "end"
-)
-
 func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (err error) {
 	cont, err := os.ReadFile(stmnt)
 	if err != nil {
@@ -46,15 +40,12 @@ func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (er
 			// Trim statement and check against internal commands.
 			statement := string(bytes.Trim(bytes.TrimPrefix(linePart, prefix), string(append(cutSet, ' '))))
 			split := strings.Split(statement, " ")
-			if len(split) > 1 && split[0] == ignoreStatement {
-				switch split[1] {
-				case ignoreStart:
-					i.state.ignoreIndex[stmnt] = 1
-					continue
-				case ignoreEnd:
-					i.state.ignoreIndex[stmnt] = 0
-					continue
+			if len(split) > 1 {
+				err = i.executeCommand(split[0], stmnt, split[1:])
+				if err != nil {
+					return
 				}
+				continue
 			}
 
 			err = i.interpretFile(statement, indent, out)
