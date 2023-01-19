@@ -19,7 +19,7 @@ func (i *Importer) executeCommand(command, file string, args []string) (err erro
 		if len(args) == 0 {
 			return errors.New("var statement needs a name and value")
 		}
-		err = i.variable(file, args)
+		i.setScopedVar(file, args)
 	}
 	return
 }

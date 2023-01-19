@@ -5,21 +5,26 @@ import (
 	"strings"
 )
 
-// variable parses variable names and values and puts them into state.vars.
-func (i *Importer) variable(fileName string, args []string) (err error) {
+var (
+	templateStart = []byte("{{")
+	templateEnd   = []byte("}}")
+)
+
+// variable parses variable names and values and returns it.
+func (i *Importer) variable(args []string) (v variable) {
 	i.state.Lock()
 	defer i.state.Unlock()
 
-	cmd := variable{name: args[0]}
+	v = variable{name: args[0]}
 	val := strings.SplitN(args[0], "=", 2)
 	if len(val) == 1 {
 		// Syntax: x = y, x =y
 		val = strings.Split(args[1], "=")
-		cmd.value = val[1]
+		v.value = val[1]
 	} else {
 		// Syntax: x=y, x= y
-		cmd.name = val[0]
-		cmd.value = val[1]
+		v.name = val[0]
+		v.value = val[1]
 	}
 	if len(args) > 2 {
 		// Skip equal sign.
@@ -31,17 +36,23 @@ func (i *Importer) variable(fileName string, args []string) (err error) {
 				ind++
 			}
 		}
-		cmd.value += strings.Join(args[ind:], " ")
+		v.value += strings.Join(args[ind:], " ")
 	}
-	i.state.vars[fileName] = append(i.state.vars[fileName], cmd)
 	return
 }
 
-var (
-	templateStart = []byte("{{")
-	templateEnd   = []byte("}}")
-)
+// setScopedVar parses and sets a scoped variable from the given args.
+func (i *Importer) setScopedVar(scope string, args []string) {
+	i.state.scopedVars[scope] = append(i.state.scopedVars[scope], i.variable(args))
+}
 
+// setUnScopedVar parses and sets an unscoped variable from the given args.
+func (i *Importer) setUnScopedVar(args []string) {
+	i.state.unscopedVars = append(i.state.unscopedVars, i.variable(args))
+}
+
+// resolve resolves an import variable to its corresponding value.
+// If the variable could not be found, the placeholders will not get replaced!
 func (i *Importer) resolve(fileName string, line []byte) (ret []byte) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
@@ -56,9 +67,13 @@ func (i *Importer) resolve(fileName string, line []byte) (ret []byte) {
 		}
 
 		for _, m := range match {
-			v := i.state.lookupVar(fileName, string(m))
+			varName := string(m)
+			v := i.state.lookupScoped(fileName, varName)
 			if v.name == "" {
-				continue
+				v = i.state.lookupUnScoped(varName)
+				if v.name == "" {
+					continue
+				}
 			}
 			matched := bytes.Join([][]byte{templateStart, []byte(v.name), templateEnd}, []byte{})
 			ret = bytes.ReplaceAll(ret, matched, []byte(v.value))

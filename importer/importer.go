@@ -3,13 +3,16 @@ package importer
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
+
+const varFileName = "gport.var"
 
 type Importer struct {
 	opts     *Options
@@ -18,20 +21,31 @@ type Importer struct {
 }
 
 type Options struct {
-	InPath  string
-	OutPath string
-	Indent  bool
-	NoStats bool
+	InPath      string
+	OutPath     string
+	VarFilePath string
+	Indent      bool
+	NoStats     bool
 }
 
 type state struct {
-	ignoreIndex map[string]int8
-	vars        map[string][]variable
+	ignoreIndex  map[string]int8
+	scopedVars   map[string][]variable
+	unscopedVars []variable
 	*sync.Mutex
 }
 
-func (s state) lookupVar(fileName, name string) variable {
-	for _, v := range s.vars[fileName] {
+func (s state) lookupScoped(fileName, name string) variable {
+	for _, v := range s.scopedVars[fileName] {
+		if v.name == name {
+			return v
+		}
+	}
+	return variable{}
+}
+
+func (s state) lookupUnScoped(name string) variable {
+	for _, v := range s.unscopedVars {
 		if v.name == name {
 			return v
 		}
@@ -44,22 +58,72 @@ type variable struct {
 	value string
 }
 
-func New(opts *Options) Importer {
-	return Importer{
+func defaultImportPrefixes() []string {
+	return []string{"#import", "# import"}
+}
+
+func New(opts *Options) (i Importer) {
+	i = Importer{
 		opts:     opts,
-		prefixes: []string{"#import", "# import"},
+		prefixes: defaultImportPrefixes(),
 		state: state{
 			ignoreIndex: map[string]int8{},
-			vars:        map[string][]variable{},
+			scopedVars:  map[string][]variable{},
 			Mutex:       &sync.Mutex{},
 		},
 	}
+
+	// Check if the global var file exists and read it into the memory.
+	vFile := opts.VarFilePath
+	_, err := os.Stat(vFile)
+	if err != nil {
+		// Look in the current working directory.
+		_, err = os.Stat(varFileName)
+		if err != nil {
+			return
+		}
+		vFile = varFileName
+	}
+	cont, err := os.ReadFile(vFile)
+	if err != nil {
+		log.Fatal().Err(err).Msg("unable to read global import variable file")
+	}
+	cutSet := []byte{'\n'}
+	lines := bytes.Split(cont, cutSet)
+	for _, l := range lines {
+		split := bytes.Split(i.StripPrefix(l), []byte{' '})
+		if !bytes.Equal(split[0], []byte(commandVar)) {
+			continue
+		}
+
+		// Skip the var declaration keyword and line end.
+		sub := split[1:]
+		str := make([]string, len(sub))
+		for j, s := range sub {
+			str[j] = string(s)
+		}
+		i.setUnScopedVar(str)
+	}
+	return
+}
+
+func (i *Importer) StripPrefix(b []byte) (ret []byte) {
+	cutSet := []byte{'\n'}
+	for _, p := range i.prefixes {
+		noPrefix := bytes.TrimPrefix(b, []byte(p))
+		if bytes.Equal(noPrefix, b) {
+			continue
+		}
+		ret = bytes.Trim(noPrefix, string(append(cutSet, ' ')))
+		return
+	}
+	return
 }
 
 func (i *Importer) Start() (err error) {
 	stat, err := os.Stat(i.opts.InPath)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal().Err(err).Msg("unable to stat input path")
 	}
 
 	start := time.Now()
@@ -115,9 +179,6 @@ func (i *Importer) runDirMode() (err error) {
 		err = i.interpretFile(inPath, nil, out)
 		return err
 	})
-	if err != nil {
-		log.Fatalf("unable to walk dirs: %v\n", err)
-	}
 	return
 }
 
