@@ -26,11 +26,20 @@ type Options struct {
 
 type state struct {
 	ignoreIndex map[string]int8
-	vars        map[string][]command
+	vars        map[string][]variable
 	*sync.Mutex
 }
 
-type command struct {
+func (s state) lookupVar(fileName, name string) variable {
+	for _, v := range s.vars[fileName] {
+		if v.name == name {
+			return v
+		}
+	}
+	return variable{}
+}
+
+type variable struct {
 	name  string
 	value string
 }
@@ -41,7 +50,7 @@ func New(opts *Options) Importer {
 		prefixes: []string{"#import", "# import"},
 		state: state{
 			ignoreIndex: map[string]int8{},
-			vars:        map[string][]command{},
+			vars:        map[string][]variable{},
 			Mutex:       &sync.Mutex{},
 		},
 	}

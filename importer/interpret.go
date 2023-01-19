@@ -35,6 +35,8 @@ func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (er
 			if i.state.ignoreIndex[stmnt] == 1 {
 				continue
 			}
+
+			l = i.resolve(stmnt, l)
 			_, err = out.Write(l)
 		} else {
 			// Trim statement and check against internal commands.
