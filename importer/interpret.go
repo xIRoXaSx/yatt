@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
 )
 
 func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (err error) {
@@ -21,7 +20,7 @@ func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (er
 		cont = append(indent, cont...)
 	}
 
-	lines := bytes.SplitAfter(cont, []byte{'\n'})
+	lines := bytes.SplitAfter(cont, cutSet)
 	for _, l := range lines {
 		if i.opts.Indent {
 			indent = pushLeadingIndent(l)
@@ -40,17 +39,17 @@ func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (er
 			_, err = out.Write(l)
 		} else {
 			// Trim statement and check against internal commands.
-			statement := string(bytes.Trim(bytes.TrimPrefix(linePart, prefix), string(append(cutSet, ' '))))
-			split := strings.Split(statement, " ")
+			statement := bytes.Trim(bytes.TrimPrefix(linePart, prefix), string(append(cutSet, ' ')))
+			split := bytes.Split(statement, []byte{' '})
 			if len(split) > 1 {
-				err = i.executeCommand(split[0], stmnt, split[1:])
+				err = i.executeCommand(string(split[0]), stmnt, split[1:])
 				if err != nil {
 					return
 				}
 				continue
 			}
 
-			err = i.interpretFile(statement, indent, out)
+			err = i.interpretFile(string(statement), indent, out)
 			if err != nil {
 				return err
 			}

@@ -7,13 +7,13 @@ const (
 	commandVar    = "var"
 )
 
-func (i *Importer) executeCommand(command, file string, args []string) (err error) {
+func (i *Importer) executeCommand(command, file string, args [][]byte) (err error) {
 	switch command {
 	case commandIgnore:
 		if len(args) == 0 {
 			return errors.New("ignore statement needs either start or end flag")
 		}
-		i.ignore(file, args[0])
+		i.ignore(file, string(args[0]))
 
 	case commandVar:
 		if len(args) == 0 {

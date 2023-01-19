@@ -35,6 +35,15 @@ type state struct {
 	*sync.Mutex
 }
 
+type variable struct {
+	name  string
+	value string
+}
+
+func defaultImportPrefixes() []string {
+	return []string{"#import", "# import"}
+}
+
 func (s state) lookupScoped(fileName, name string) variable {
 	for _, v := range s.scopedVars[fileName] {
 		if v.name == name {
@@ -51,15 +60,6 @@ func (s state) lookupUnScoped(name string) variable {
 		}
 	}
 	return variable{}
-}
-
-type variable struct {
-	name  string
-	value string
-}
-
-func defaultImportPrefixes() []string {
-	return []string{"#import", "# import"}
 }
 
 func New(opts *Options) (i Importer) {
@@ -92,17 +92,12 @@ func New(opts *Options) (i Importer) {
 	lines := bytes.Split(cont, cutSet)
 	for _, l := range lines {
 		split := bytes.Split(i.StripPrefix(l), []byte{' '})
-		if !bytes.Equal(split[0], []byte(commandVar)) {
+		if string(split[0]) != commandVar {
 			continue
 		}
 
-		// Skip the var declaration keyword and line end.
-		sub := split[1:]
-		str := make([]string, len(sub))
-		for j, s := range sub {
-			str[j] = string(s)
-		}
-		i.setUnScopedVar(str)
+		// Skip the var declaration keyword.
+		i.setUnScopedVar(split[1:])
 	}
 	return
 }

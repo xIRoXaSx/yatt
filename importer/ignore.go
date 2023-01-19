@@ -5,11 +5,11 @@ const (
 	ignoreEnd   = "end"
 )
 
-func (i *Importer) ignore(filename, args string) {
+func (i *Importer) ignore(filename string, arg string) {
 	i.state.Lock()
 	defer i.state.Unlock()
 
-	switch args {
+	switch arg {
 	case ignoreStart:
 		i.state.ignoreIndex[filename] = 1
 	case ignoreEnd:
