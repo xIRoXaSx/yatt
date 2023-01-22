@@ -10,7 +10,7 @@ var (
 	templateEnd   = []byte("}}")
 )
 
-// variable parses variable names and values and returns it.
+// variable parses a variable name and value and returns it.
 func (i *Importer) variable(args [][]byte) (v variable) {
 	i.state.Lock()
 	defer i.state.Unlock()
@@ -51,8 +51,8 @@ func (i *Importer) setScopedVar(scope string, args [][]byte) {
 	i.state.scopedVars[scope] = append(i.state.scopedVars[scope], i.variable(args))
 }
 
-// setUnScopedVar parses and sets an unscoped variable from the given args.
-func (i *Importer) setUnScopedVar(args [][]byte) {
+// setUnscopedVar parses and sets an unscoped variable from the given args.
+func (i *Importer) setUnscopedVar(args [][]byte) {
 	i.state.unscopedVars = append(i.state.unscopedVars, i.variable(args))
 }
 
@@ -77,7 +77,7 @@ func (i *Importer) resolve(fileName string, line []byte) (ret []byte) {
 			varName := string(m)
 			v := i.state.lookupScoped(fileName, varName)
 			if v.name == "" {
-				v = i.state.lookupUnScoped(varName)
+				v = i.state.lookupUnscoped(varName)
 				if v.name == "" {
 					continue
 				}

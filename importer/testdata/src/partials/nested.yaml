@@ -1,0 +1,4 @@
+  gport does also work with nested imports!
+
+# Below is the nested yaml file.
+# import ./testdata/src/partials/nested2.yaml

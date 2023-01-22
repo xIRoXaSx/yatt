@@ -2,16 +2,18 @@ package importer
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 )
 
-func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (err error) {
-	cont, err := os.ReadFile(stmnt)
+func (i *Importer) interpretFile(filePath string, indent []byte, out io.Writer) (err error) {
+	cont, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Printf("warn: unable to read file %s: %v\n", stmnt, err)
-		return err
+		log.Printf("warn: unable to read file %s: %v\n", filePath, err)
+		return
 	}
 	// Prepend indention to all linebreaks.
 	cutSet := []byte{'\n'}
@@ -30,30 +32,36 @@ func (i *Importer) interpretFile(stmnt string, indent []byte, out io.Writer) (er
 		linePart := l[len(indent):]
 		prefix := i.matchedImportPrefix(linePart)
 		if prefix == nil {
-			// Still in an ignore block.
-			if i.state.ignoreIndex[stmnt] == 1 {
+			// Line does not contain one of the required prefixes.
+			if i.state.ignoreIndex[filePath] == 1 {
+				// Still in an ignore block.
 				continue
 			}
-
-			l = i.resolve(stmnt, l)
-			_, err = out.Write(l)
+			_, err = out.Write(i.resolve(filePath, l))
 		} else {
 			// Trim statement and check against internal commands.
-			statement := bytes.Trim(bytes.TrimPrefix(linePart, prefix), string(append(cutSet, ' ')))
+			statement := i.TrimLine(linePart, prefix)
 			split := bytes.Split(statement, []byte{' '})
 			if len(split) > 1 {
-				err = i.executeCommand(string(split[0]), stmnt, split[1:])
+				err = i.executeCommand(string(split[0]), filePath, split[1:])
 				if err != nil {
 					return
 				}
 				continue
 			}
 
-			err = i.interpretFile(string(statement), indent, out)
+			stmnt := filepath.Clean(string(statement))
+			filePath = filepath.Clean(filePath)
+			if i.state.hasCyclicDependency(filePath, stmnt) {
+				err = fmt.Errorf("detected import cycle: %s -> %s", filePath, stmnt)
+				return
+			}
+			i.state.addDependency(filePath, stmnt)
+			err = i.interpretFile(stmnt, indent, out)
 			if err != nil {
 				return err
 			}
-			// Append new line after the imported content since the statement contains one too.
+
 			_, err = out.Write(cutSet)
 			if err != nil {
 				return

@@ -31,6 +31,7 @@ type Options struct {
 type state struct {
 	ignoreIndex  map[string]int8
 	scopedVars   map[string][]variable
+	dependencies map[string][]string
 	unscopedVars []variable
 	*sync.Mutex
 }
@@ -44,6 +45,15 @@ func defaultImportPrefixes() []string {
 	return []string{"#import", "# import"}
 }
 
+func (s state) lookupUnscoped(name string) variable {
+	for _, v := range s.unscopedVars {
+		if v.name == name {
+			return v
+		}
+	}
+	return variable{}
+}
+
 func (s state) lookupScoped(fileName, name string) variable {
 	for _, v := range s.scopedVars[fileName] {
 		if v.name == name {
@@ -53,13 +63,34 @@ func (s state) lookupScoped(fileName, name string) variable {
 	return variable{}
 }
 
-func (s state) lookupUnScoped(name string) variable {
-	for _, v := range s.unscopedVars {
-		if v.name == name {
-			return v
+func (s state) addDependency(fileName, dependency string) {
+	s.dependencies[fileName] = append(s.dependencies[fileName], dependency)
+}
+
+// hasCyclicDependency walks down the dependencies to check whether the given dependency has creates a loop.
+// Returns true if a cycle has been detected.
+func (s state) hasCyclicDependency(fileName, dependency string) bool {
+	for _, d := range s.dependencies[dependency] {
+		if d == fileName {
+			return true
+		} else if d == "" {
+			return false
 		}
+		return s.hasCyclicDependency(fileName, d)
 	}
-	return variable{}
+	return false
+}
+
+func (s state) followDependency(dependency, target string) bool {
+	for _, d := range s.dependencies[dependency] {
+		if d == target {
+			return true
+		} else if d == "" {
+			return false
+		}
+		return s.followDependency(d, target)
+	}
+	return false
 }
 
 func New(opts *Options) (i Importer) {
@@ -67,9 +98,10 @@ func New(opts *Options) (i Importer) {
 		opts:     opts,
 		prefixes: defaultImportPrefixes(),
 		state: state{
-			ignoreIndex: map[string]int8{},
-			scopedVars:  map[string][]variable{},
-			Mutex:       &sync.Mutex{},
+			ignoreIndex:  map[string]int8{},
+			scopedVars:   map[string][]variable{},
+			dependencies: map[string][]string{},
+			Mutex:        &sync.Mutex{},
 		},
 	}
 
@@ -91,28 +123,27 @@ func New(opts *Options) (i Importer) {
 	cutSet := []byte{'\n'}
 	lines := bytes.Split(cont, cutSet)
 	for _, l := range lines {
-		split := bytes.Split(i.StripPrefix(l), []byte{' '})
+		split := bytes.Split(i.CutPrefix(l), []byte{' '})
 		if string(split[0]) != commandVar {
 			continue
 		}
 
 		// Skip the var declaration keyword.
-		i.setUnScopedVar(split[1:])
+		i.setUnscopedVar(split[1:])
 	}
 	return
 }
 
-func (i *Importer) StripPrefix(b []byte) (ret []byte) {
-	cutSet := []byte{'\n'}
-	for _, p := range i.prefixes {
-		noPrefix := bytes.TrimPrefix(b, []byte(p))
-		if bytes.Equal(noPrefix, b) {
-			continue
-		}
-		ret = bytes.Trim(noPrefix, string(append(cutSet, ' ')))
+func (i *Importer) TrimLine(b, prefix []byte) []byte {
+	return bytes.Trim(bytes.TrimPrefix(b, prefix), "\n ")
+}
+
+func (i *Importer) CutPrefix(b []byte) (ret []byte) {
+	prefix := i.matchedImportPrefix(b)
+	if prefix == nil {
 		return
 	}
-	return
+	return i.TrimLine(b, prefix)
 }
 
 func (i *Importer) Start() (err error) {
