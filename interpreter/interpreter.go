@@ -3,6 +3,7 @@ package importer
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,7 @@ import (
 
 const varFileName = "gport.var"
 
-type Importer struct {
+type Interpreter struct {
 	opts     *Options
 	prefixes []string
 	state    state
@@ -46,56 +47,8 @@ func defaultImportPrefixes() []string {
 	return []string{"#import", "# import"}
 }
 
-func (s state) lookupUnscoped(name string) variable {
-	for _, v := range s.unscopedVars {
-		if v.name == name {
-			return v
-		}
-	}
-	return variable{}
-}
-
-func (s state) lookupScoped(fileName, name string) variable {
-	for _, v := range s.scopedVars[fileName] {
-		if v.name == name {
-			return v
-		}
-	}
-	return variable{}
-}
-
-func (s state) addDependency(fileName, dependency string) {
-	s.dependencies[fileName] = append(s.dependencies[fileName], dependency)
-}
-
-// hasCyclicDependency walks down the dependencies to check whether the given dependency has creates a loop.
-// Returns true if a cycle has been detected.
-func (s state) hasCyclicDependency(fileName, dependency string) bool {
-	for _, d := range s.dependencies[dependency] {
-		if d == fileName {
-			return true
-		} else if d == "" {
-			return false
-		}
-		return s.hasCyclicDependency(fileName, d)
-	}
-	return false
-}
-
-func (s state) followDependency(dependency, target string) bool {
-	for _, d := range s.dependencies[dependency] {
-		if d == target {
-			return true
-		} else if d == "" {
-			return false
-		}
-		return s.followDependency(d, target)
-	}
-	return false
-}
-
-func New(opts *Options) (i Importer) {
-	i = Importer{
+func New(opts *Options) (i Interpreter) {
+	i = Interpreter{
 		opts:     opts,
 		prefixes: defaultImportPrefixes(),
 		state: state{
@@ -135,11 +88,11 @@ func New(opts *Options) (i Importer) {
 	return
 }
 
-func (i *Importer) TrimLine(b, prefix []byte) []byte {
+func (i *Interpreter) TrimLine(b, prefix []byte) []byte {
 	return bytes.Trim(bytes.TrimPrefix(b, prefix), "\n ")
 }
 
-func (i *Importer) CutPrefix(b []byte) (ret []byte) {
+func (i *Interpreter) CutPrefix(b []byte) (ret []byte) {
 	prefix := i.matchedImportPrefix(b)
 	if prefix == nil {
 		return
@@ -147,7 +100,7 @@ func (i *Importer) CutPrefix(b []byte) (ret []byte) {
 	return i.TrimLine(b, prefix)
 }
 
-func (i *Importer) Start() (err error) {
+func (i *Interpreter) Start() (err error) {
 	stat, err := os.Stat(i.opts.InPath)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to stat input path")
@@ -172,7 +125,7 @@ func (i *Importer) Start() (err error) {
 }
 
 // runDirMode runs the import for each file inside the Options.InPath.
-func (i *Importer) runDirMode() (err error) {
+func (i *Interpreter) runDirMode() (err error) {
 	const dirPerm = os.FileMode(0700)
 
 	err = os.MkdirAll(i.opts.OutPath, dirPerm)
@@ -218,7 +171,7 @@ func (i *Importer) runDirMode() (err error) {
 }
 
 // runFileMode runs the import with the targeted Options.OutPath.
-func (i *Importer) runFileMode() (err error) {
+func (i *Interpreter) runFileMode() (err error) {
 	out, err := os.OpenFile(i.opts.OutPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
 		return err
@@ -239,5 +192,85 @@ func (i *Importer) runFileMode() (err error) {
 
 	// Write buffer to the file and cut last new line.
 	_, err = out.Write(buf.Bytes()[:buf.Len()-1])
+	return
+}
+
+func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Writer) (err error) {
+	cont, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("warn: unable to read file %s: %v\n", filePath, err)
+		return
+	}
+
+	// Append indention to all linebreaks, prepend to the first line.
+	cutSet := []byte{'\n'}
+	if len(indent) > 0 {
+		cont = bytes.ReplaceAll(cont, cutSet, append(cutSet, indent...))
+		cont = append(indent, cont...)
+	}
+
+	lines := bytes.Split(cont, cutSet)
+	for _, l := range lines {
+		if i.opts.Indent {
+			indent = leadingIndents(l)
+		}
+
+		// Skip the indents.
+		linePart := l[len(indent):]
+		prefix := i.matchedImportPrefix(linePart)
+		if prefix == nil {
+			// Line does not contain one of the required prefixes.
+			if i.state.ignoreIndex[filePath] == 1 {
+				// Still in an ignore block.
+				continue
+			}
+			_, err = out.Write(append(i.resolve(filePath, l), cutSet...))
+			if err != nil {
+				return
+			}
+		} else {
+			// Trim statement and check against internal commands.
+			statement := i.TrimLine(linePart, prefix)
+			split := bytes.Split(statement, []byte{' '})
+			if len(split) > 1 {
+				err = i.executeCommand(string(split[0]), filePath, split[1:])
+				if err != nil {
+					return
+				}
+				continue
+			}
+
+			stmnt := filepath.Clean(string(statement))
+			filePath = filepath.Clean(filePath)
+			if i.state.hasCyclicDependency(filePath, stmnt) {
+				err = fmt.Errorf("detected import cycle: %s -> %s", filePath, stmnt)
+				return
+			}
+			i.state.addDependency(filePath, stmnt)
+			err = i.interpretFile(stmnt, indent, out)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return
+}
+
+func (i *Interpreter) matchedImportPrefix(line []byte) []byte {
+	for _, pref := range i.prefixes {
+		if bytes.HasPrefix(line, []byte(pref)) {
+			return []byte(pref)
+		}
+	}
+	return nil
+}
+
+func leadingIndents(line []byte) (s []byte) {
+	for _, r := range line {
+		if r != ' ' && r != '\t' {
+			break
+		}
+		s = append(s, r)
+	}
 	return
 }

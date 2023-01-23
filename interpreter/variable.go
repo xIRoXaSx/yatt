@@ -11,7 +11,7 @@ var (
 )
 
 // variable parses a variable name and value and returns it.
-func (i *Importer) variable(args [][]byte) (v variable) {
+func (i *Interpreter) variable(args [][]byte) (v variable) {
 	i.state.Lock()
 	defer i.state.Unlock()
 
@@ -47,18 +47,18 @@ func (i *Importer) variable(args [][]byte) (v variable) {
 }
 
 // setScopedVar parses and sets a scoped variable from the given args.
-func (i *Importer) setScopedVar(scope string, args [][]byte) {
+func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
 	i.state.scopedVars[scope] = append(i.state.scopedVars[scope], i.variable(args))
 }
 
 // setUnscopedVar parses and sets an unscoped variable from the given args.
-func (i *Importer) setUnscopedVar(args [][]byte) {
+func (i *Interpreter) setUnscopedVar(args [][]byte) {
 	i.state.unscopedVars = append(i.state.unscopedVars, i.variable(args))
 }
 
 // resolve resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Importer) resolve(fileName string, line []byte) (ret []byte) {
+func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {

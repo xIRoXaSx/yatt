@@ -7,7 +7,7 @@ const (
 	commandVar    = "var"
 )
 
-func (i *Importer) executeCommand(command, file string, args [][]byte) (err error) {
+func (i *Interpreter) executeCommand(command, file string, args [][]byte) (err error) {
 	switch command {
 	case commandIgnore:
 		if len(args) == 0 {

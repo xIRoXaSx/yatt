@@ -5,7 +5,7 @@ const (
 	ignoreEnd   = "end"
 )
 
-func (i *Importer) ignore(filename string, arg string) {
+func (i *Interpreter) ignore(filename string, arg string) {
 	i.state.Lock()
 	defer i.state.Unlock()
 
