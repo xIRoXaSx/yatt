@@ -15,14 +15,15 @@ func (i *Importer) interpretFile(filePath string, indent []byte, out io.Writer) 
 		log.Printf("warn: unable to read file %s: %v\n", filePath, err)
 		return
 	}
-	// Prepend indention to all linebreaks.
+
+	// Append indention to all linebreaks, prepend to the first line.
 	cutSet := []byte{'\n'}
 	if len(indent) > 0 {
 		cont = bytes.ReplaceAll(cont, cutSet, append(cutSet, indent...))
 		cont = append(indent, cont...)
 	}
 
-	lines := bytes.SplitAfter(cont, cutSet)
+	lines := bytes.Split(cont, cutSet)
 	for _, l := range lines {
 		if i.opts.Indent {
 			indent = pushLeadingIndent(l)
@@ -37,7 +38,10 @@ func (i *Importer) interpretFile(filePath string, indent []byte, out io.Writer) 
 				// Still in an ignore block.
 				continue
 			}
-			_, err = out.Write(i.resolve(filePath, l))
+			_, err = out.Write(append(i.resolve(filePath, l), cutSet...))
+			if err != nil {
+				return
+			}
 		} else {
 			// Trim statement and check against internal commands.
 			statement := i.TrimLine(linePart, prefix)
@@ -61,14 +65,6 @@ func (i *Importer) interpretFile(filePath string, indent []byte, out io.Writer) 
 			if err != nil {
 				return err
 			}
-
-			_, err = out.Write(cutSet)
-			if err != nil {
-				return
-			}
-		}
-		if err != nil {
-			return
 		}
 	}
 	return

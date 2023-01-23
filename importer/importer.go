@@ -33,6 +33,7 @@ type state struct {
 	scopedVars   map[string][]variable
 	dependencies map[string][]string
 	unscopedVars []variable
+	dirMode      bool
 	*sync.Mutex
 }
 
@@ -153,7 +154,8 @@ func (i *Importer) Start() (err error) {
 	}
 
 	start := time.Now()
-	if stat.IsDir() {
+	i.state.dirMode = stat.IsDir()
+	if i.state.dirMode {
 		err = i.runDirMode()
 	} else {
 		err = i.runFileMode()
@@ -191,6 +193,12 @@ func (i *Importer) runDirMode() (err error) {
 			return nil
 		}
 
+		// Write to the buffer to ensure that files don't get partially written.
+		buf := &bytes.Buffer{}
+		err = i.interpretFile(inPath, nil, buf)
+		if err != nil {
+			return err
+		}
 		out, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 		if err != nil {
 			return err
@@ -202,7 +210,8 @@ func (i *Importer) runDirMode() (err error) {
 			}
 		}()
 
-		err = i.interpretFile(inPath, nil, out)
+		// Write buffer to the file and cut last new line.
+		_, err = out.Write(buf.Bytes()[:buf.Len()-1])
 		return err
 	})
 	return
@@ -221,11 +230,14 @@ func (i *Importer) runFileMode() (err error) {
 		}
 	}()
 
+	// Write to the buffer to ensure that files don't get partially written.
 	buf := &bytes.Buffer{}
 	err = i.interpretFile(i.opts.InPath, nil, buf)
 	if err != nil {
 		return
 	}
-	_, err = out.Write(buf.Bytes())
+
+	// Write buffer to the file and cut last new line.
+	_, err = out.Write(buf.Bytes()[:buf.Len()-1])
 	return
 }
