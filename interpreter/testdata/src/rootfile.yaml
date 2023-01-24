@@ -1,29 +1,29 @@
 # Starting from here, we want to import multiple files located in this directory.
-# The import statement can have a space between the '#' or not ("#import" / "# import").
+# fastplate statements may have a space between the '#' or not ("#fastplate" / "# fastplate").
 ImportExample:
-  # import ./testdata/src/partials/description.yaml
+  # fastplate ./testdata/src/partials/description.yaml
 
   # If enabled, indentation in front of an import statement will be applied to the whole imported section.
   # The content of the imported file will automatically have the prepended spaces / tabs.
   # This works with any amount of spaces / tabs.
   Indention:
-    # import ./testdata/src/partials/indention.yaml
+    # fastplate ./testdata/src/partials/indention.yaml
 
   # Nesting imports
   # ~-~-~-~-~-~-~-~
   # Nested imports allow for more flexibility.
   # In this example, the correct YAML indention comes directly from inside the imported file(s).
   NestedImports: |
-  # import ./testdata/src/partials/nested.yaml
+  # fastplate ./testdata/src/partials/nested.yaml
 
   # Ignoring parts of a file
   # ~-~-~-~-~-~-~-~-~-~-~-~-
   # You can ignore lines via the ignore start / end syntax!
   # This is pretty handy if you don't want certain sections in the output file.
-  # import ignore start
+  # fastplate ignore start
   #   These two lines will not show up in the output file.
   #   This also allows for template specific documentation.
-  # import ignore end
+  # fastplate ignore end
 
   # Using variables
   # ~-~-~-~-~-~-~-~
@@ -32,15 +32,15 @@ ImportExample:
   # This allows you to use variables regardless of the template.
   # The following options are valid for both scopes: x = y, x= y, x =y, x=y.
   # Declaring a variable:
-  #   # import var test = 1
+  #   # fastplate var test = 1
   # Using the syntax:
   #   This is a text which includes {{test}} variable.
   # Example:
   #   A value like the threshold down below may be used in multiple places
-  #   and can therefor be declared as an import var.
+  #   and can therefore be declared as a var.
   Variables:
-    # import var scoped_threshold = 0.75
+    # fastplate var scoped_threshold = 0.75
     Threshold: {{scoped_threshold}}
     Message: The threshold of {{scoped_threshold}} has been reached.
-    # import ./testdata/src/partials/varscopes.yaml
+    # fastplate ./testdata/src/partials/varscopes.yaml
 # End of file.

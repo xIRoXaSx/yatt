@@ -44,7 +44,7 @@ type variable struct {
 }
 
 func defaultImportPrefixes() []string {
-	return []string{"#import", "# import"}
+	return []string{"#fastplate", "# fastplate"}
 }
 
 func New(opts *Options) (i Interpreter) {
