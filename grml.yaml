@@ -18,8 +18,11 @@ env:
     VERSION:  1.0.0
     BIN_NAME: fastplate
     PKG_DIR: interpreter
+    DOCKER_DIR: ${ROOT}/docker
 
 interpreter: sh
+import:
+    - docker/build.sh
 
 commands:
     bench:
@@ -55,6 +58,23 @@ commands:
             go test ./
 
     build:
-        help: build the project
+        help: build the project locally
         exec: |
             CGO_ENABLED=0 go build -o="${BIN_NAME}-v${VERSION}" .
+        commands:
+            docker:
+                help: build the docker image
+                exec: |
+                    cd "${DOCKER_DIR}"
+                    build_docker
+                commands:
+                    multi_arch:
+                        help: build the docker multi arch image
+                        exec: |
+                            cd "${DOCKER_DIR}"
+                            build_multi_arch_docker
+
+            multi_arch:
+                help: build via docker multi arch container
+                exec: |
+                    run_docker_multi_arch_build
