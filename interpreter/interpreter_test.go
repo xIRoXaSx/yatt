@@ -44,7 +44,7 @@ func TestInterpreter(t *testing.T) {
 		OutPath:     testDestDir,
 		Indent:      true,
 		NoStats:     true,
-		VarFilePath: filepath.Join("testdata", "var.gport"),
+		VarFilePath: filepath.Join("testdata", "fastplate.var"),
 	})
 	r.NoError(t, ip.Start())
 
@@ -148,7 +148,7 @@ func BenchmarkFileWrites(b *testing.B) {
 	imp := New(&Options{
 		InPath:      filepath.Join("testdata", "src", "rootfile.yaml"),
 		OutPath:     filepath.Join(testDir, "rootfile.yaml"),
-		VarFilePath: filepath.Join("testdata", "var.gport"),
+		VarFilePath: filepath.Join("testdata", "fastplate.var"),
 		Indent:      true,
 		NoStats:     true,
 	})

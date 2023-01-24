@@ -28,7 +28,7 @@ ImportExample:
   # Using variables
   # ~-~-~-~-~-~-~-~
   # By declaring scoped / local variables in the syntax down below, you can reuse values in the same template (file).
-  # You can declare a var.gport file or use the optional "-var <file_path>" argument to define unscoped / global variables.
+  # You can declare a fastplate.var file or use the optional "-var <file_path>" argument to define unscoped / global variables.
   # This allows you to use variables regardless of the template.
   # The following options are valid for both scopes: x = y, x= y, x =y, x=y.
   # Declaring a variable:

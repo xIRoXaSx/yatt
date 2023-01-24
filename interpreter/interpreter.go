@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const varFileName = "gport.var"
+const varFileName = "fastplate.var"
 
 type Interpreter struct {
 	opts     *Options

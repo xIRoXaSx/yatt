@@ -1,4 +1,4 @@
-module github.com/xiroxasx/gport
+module github.com/xiroxasx/fastplate
 
 go 1.19
 
