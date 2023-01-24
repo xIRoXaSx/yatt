@@ -1,0 +1,60 @@
+# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
+#      _____                 __         .__          __
+#    _/ ____\____    _______/  |_______ |  | _____ _/  |_  ____
+#    \   __\\__  \  /  ___/\   __\____ \|  | \__  \\   __\/ __ \
+#    |  |   / __ \_\___ \  |  | |  |_> >  |__/ __ \|  | \  ___/
+#    |__|  (____  /____  > |__| |   __/|____(____  /__|  \___  >
+#               \/     \/       |__|             \/          \/
+# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
+#
+# > What is this file used for?
+#    This file is designed to run with grml to simplify various tasks.
+#    Head over to https://github.com/desertbit/grml, get / compile and setup grml.
+#    Afterwards you can use these tasks.
+version: 1
+project: fastplate
+
+env:
+    VERSION:  1.0.0
+    BIN_NAME: fastplate
+    PKG_DIR: interpreter
+
+interpreter: sh
+
+commands:
+    bench:
+        help: run benchmarks
+        deps:
+            - bench.interpreter
+            - bench.writer
+        commands:
+            interpreter:
+                help: benchmark the file interpretation
+                exec: |
+                    cd "${PKG_DIR}"
+                    go test \
+                        -test.benchmem \
+                        -test.bench="^\QBenchmarkFileInterpretation\E$" \
+                        -run=^$ \
+                        github.com/xiroxasx/fastplate/interpreter
+
+            writer:
+                help: benchmark the file interpretation with corresponding outputs
+                exec: |
+                    cd "${PKG_DIR}"
+                    go test \
+                        -benchmem \
+                        -bench="^\QBenchmarkFileWrites\E$" \
+                        -run=^$ \
+                        github.com/xiroxasx/fastplate/interpreter
+
+    test:
+        help: run all tests
+        exec: |
+            cd "${PKG_DIR}"
+            go test ./
+
+    build:
+        help: build the project
+        exec: |
+            CGO_ENABLED=0 go build -o="${BIN_NAME}-v${VERSION}" .
