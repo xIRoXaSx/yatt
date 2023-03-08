@@ -11,6 +11,7 @@ const (
 	commandVar        = "var"
 	commandForeach    = "foreach"
 	commandForeachEnd = "foreachend"
+	commandImport     = "import"
 )
 
 func (i *Interpreter) executeCommand(command, file string, args [][]byte, out io.Writer) (err error) {
@@ -57,6 +58,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, out io
 			return
 		}
 		i.state.foreach[file] = foreach{}
+
 	}
 	return
 }

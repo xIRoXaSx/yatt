@@ -2,6 +2,7 @@ package importer
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -245,7 +246,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 			// Trim statement and check against internal commands.
 			statement := i.TrimLine(linePart, prefix)
 			split := bytes.Split(statement, []byte{' '})
-			if len(split) > 0 {
+			if len(split) > 0 && string(split[0]) != commandImport {
 				err = i.executeCommand(string(split[0]), filePath, split[1:], out)
 				if err != nil {
 					return
@@ -253,7 +254,11 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 				continue
 			}
 
-			stmnt := filepath.Clean(string(statement))
+			if len(split) < 2 {
+				err = errors.New("no import path given")
+				return
+			}
+			stmnt := filepath.Clean(string(split[1]))
 			filePath = filepath.Clean(filePath)
 			if i.state.hasCyclicDependency(filePath, stmnt) {
 				err = fmt.Errorf("detected import cycle: %s -> %s", filePath, stmnt)

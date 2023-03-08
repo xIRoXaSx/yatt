@@ -1,20 +1,20 @@
 # Starting from here, we want to import multiple files located in this directory.
 # fastplate statements may have a space between the '#' or not ("#fastplate" / "# fastplate").
 ImportExample:
-  # fastplate ./testdata/src/partials/description.yaml
+  # fastplate import ./testdata/src/partials/description.yaml
 
   # If enabled, indentation in front of an import statement will be applied to the whole imported section.
   # The content of the imported file will automatically have the prepended spaces / tabs.
   # This works with any amount of spaces / tabs.
   Indention:
-    # fastplate ./testdata/src/partials/indention.yaml
+    # fastplate import ./testdata/src/partials/indention.yaml
 
   # Nesting imports
   # ~-~-~-~-~-~-~-~
   # Nested imports allow for more flexibility.
   # In this example, the correct YAML indention comes directly from inside the imported file(s).
   NestedImports: |
-  # fastplate ./testdata/src/partials/nested.yaml
+  # fastplate import ./testdata/src/partials/nested.yaml
 
   # Ignoring parts of a file
   # ~-~-~-~-~-~-~-~-~-~-~-~-
@@ -42,16 +42,17 @@ ImportExample:
     # fastplate var scoped_threshold = 0.75
     Threshold: {{scoped_threshold}}
     Message: The threshold of {{scoped_threshold}} has been reached.
-    # fastplate ./testdata/src/partials/varscopes.yaml
+    # fastplate import ./testdata/src/partials/varscopes.yaml
 
   # Using foreach loops
   # ~-~-~-~-~-~-~-~-~-~
   # By declaring variables and using the corresponding foreach syntax, you can create a for-each loop.
   # Opening and closing brackets are optional.
+  loops: |
   # fastplate var var1 = var 1
   # fastplate var var2 = var 2
   # fastplate var var3 = var 3
   # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
-  # Hello from index {{index}} with value {{value}}
+    Hello from index {{index}} with value {{value}}
   # fastplate foreachend
 # End of file.
