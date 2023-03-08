@@ -1,5 +1,13 @@
 package importer
 
+func (s state) varLookup(file, name string) (v variable) {
+	v = s.lookupScoped(file, name)
+	if v.name == "" {
+		v = s.lookupUnscoped(name)
+	}
+	return
+}
+
 func (s state) lookupUnscoped(name string) variable {
 	for _, v := range s.unscopedVars {
 		if v.name == name {

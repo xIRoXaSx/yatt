@@ -34,6 +34,7 @@ type state struct {
 	scopedVars   map[string][]variable
 	dependencies map[string][]string
 	unscopedVars []variable
+	foreach      map[string]foreach
 	dirMode      bool
 	*sync.Mutex
 }
@@ -41,6 +42,11 @@ type state struct {
 type variable struct {
 	name  string
 	value string
+}
+
+type foreach struct {
+	variables []variable
+	lines     [][]byte
 }
 
 func defaultImportPrefixes() []string {
@@ -55,6 +61,7 @@ func New(opts *Options) (i Interpreter) {
 			ignoreIndex:  map[string]int8{},
 			scopedVars:   map[string][]variable{},
 			dependencies: map[string][]string{},
+			foreach:      map[string]foreach{},
 			Mutex:        &sync.Mutex{},
 		},
 	}
@@ -224,6 +231,12 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 				// Still in an ignore block.
 				continue
 			}
+			if len(i.state.foreach[filePath].variables) > 0 {
+				// Currently moving inside a foreach loop.
+				i.appendLine(filePath, l)
+				continue
+			}
+
 			_, err = out.Write(append(i.resolve(filePath, l), cutSet...))
 			if err != nil {
 				return
@@ -232,8 +245,8 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 			// Trim statement and check against internal commands.
 			statement := i.TrimLine(linePart, prefix)
 			split := bytes.Split(statement, []byte{' '})
-			if len(split) > 1 {
-				err = i.executeCommand(string(split[0]), filePath, split[1:])
+			if len(split) > 0 {
+				err = i.executeCommand(string(split[0]), filePath, split[1:], out)
 				if err != nil {
 					return
 				}

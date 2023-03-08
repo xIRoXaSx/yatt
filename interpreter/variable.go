@@ -75,12 +75,9 @@ func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte) {
 		// If no matched variable is found, try to find an unscoped / global var.
 		for _, m := range match {
 			varName := string(m)
-			v := i.state.lookupScoped(fileName, varName)
+			v := i.state.varLookup(fileName, varName)
 			if v.name == "" {
-				v = i.state.lookupUnscoped(varName)
-				if v.name == "" {
-					continue
-				}
+				continue
 			}
 			matched := bytes.Join([][]byte{templateStart, []byte(v.name), templateEnd}, []byte{})
 			ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
