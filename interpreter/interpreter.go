@@ -238,7 +238,12 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 				continue
 			}
 
-			_, err = out.Write(append(i.resolve(filePath, l), cutSet...))
+			var ret []byte
+			ret, err = i.resolve(filePath, l)
+			if err != nil {
+				return
+			}
+			_, err = out.Write(append(ret, cutSet...))
 			if err != nil {
 				return
 			}

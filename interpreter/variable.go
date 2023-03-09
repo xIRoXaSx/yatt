@@ -58,7 +58,7 @@ func (i *Interpreter) setUnscopedVar(args [][]byte) {
 
 // resolve resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte) {
+func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte, err error) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {
@@ -74,14 +74,37 @@ func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte) {
 		// Resolve scoped / local variables first.
 		// If no matched variable is found, try to find an unscoped / global var.
 		for _, m := range match {
-			varName := string(m)
-			v := i.state.varLookup(fileName, varName)
+			if len(m) == 0 {
+				continue
+			}
+			varName, fncName := i.unpackFuncName(m)
+			v := i.state.varLookup(fileName, string(varName))
 			if v.name == "" {
 				continue
 			}
 			matched := bytes.Join([][]byte{templateStart, []byte(v.name), templateEnd}, []byte{})
+			if len(fncName) > 0 {
+				var mod []byte
+				mod, err = i.executeFunction(string(fncName), []byte(v.value))
+				if err != nil {
+					return
+				}
+				v.value = string(mod)
+				matched = bytes.Join([][]byte{templateStart, fncName, []byte("("), []byte(v.name), []byte(")"), templateEnd}, []byte{})
+			}
 			ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
 		}
+	}
+	return
+}
+
+func (i *Interpreter) unpackFuncName(b []byte) (v []byte, fncName []byte) {
+	v = b
+	fnc := bytes.Split(b, []byte("("))
+	if len(fnc) > 1 {
+		fnc[1] = bytes.Trim(fnc[1], ")")
+		fncName = fnc[0]
+		v = fnc[1]
 	}
 	return
 }
