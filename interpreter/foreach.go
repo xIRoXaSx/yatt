@@ -33,7 +33,12 @@ func (i *Interpreter) appendLine(file string, l []byte) {
 func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 	for j := range i.state.foreach[file].variables {
 		for _, l := range i.state.foreach[file].lines {
-			_, err = out.Write(append(i.resolveForeach(j, file, l), '\n'))
+			var mod []byte
+			mod, err = i.resolveForeach(j, file, l)
+			if err != nil {
+				return
+			}
+			_, err = out.Write(append(mod, '\n'))
 			if err != nil {
 				return
 			}
@@ -44,7 +49,7 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 
 // resolveForeach resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolveForeach(index int, file string, line []byte) (ret []byte) {
+func (i *Interpreter) resolveForeach(index int, file string, line []byte) (ret []byte, err error) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {
@@ -59,17 +64,29 @@ func (i *Interpreter) resolveForeach(index int, file string, line []byte) (ret [
 
 		// Resolve foreach variables.
 		for _, m := range match {
-			var replacement variable
-			switch string(m) {
+			var v variable
+			varName, fncName := i.unpackFuncName(m)
+
+			switch string(varName) {
 			case foreachValue:
-				replacement = i.state.varLookup(file, i.state.foreach[file].variables[index].name)
+				v = i.state.varLookup(file, i.state.foreach[file].variables[index].name)
+				if len(fncName) > 0 {
+					var mod []byte
+					mod, err = i.executeFunction(string(fncName), []byte(v.value))
+					if err != nil {
+						return
+					}
+					v.value = string(mod)
+					matched := bytes.Join([][]byte{templateStart, fncName, []byte("("), []byte(v.name), []byte(")"), templateEnd}, []byte{})
+					ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
+				}
 			case foreachIndex:
-				replacement = variable{value: fmt.Sprint(index)}
+				v = variable{value: fmt.Sprint(index)}
 			default:
 				continue
 			}
 			group := bytes.Join([][]byte{templateStart, m, templateEnd}, nil)
-			ret = bytes.ReplaceAll(ret, group, []byte(replacement.value))
+			ret = bytes.ReplaceAll(ret, group, []byte(v.value))
 		}
 	}
 	return
