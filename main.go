@@ -18,7 +18,7 @@ func parseFlags() (a importer.Options) {
 	flag.BoolVar(&a.NoStats, "no-stats", false, "do not print stats at the end of the execution")
 	flag.StringVar(&a.InPath, "in", "", "the root path")
 	flag.StringVar(&a.OutPath, "out", "", "the output path. If not used, in will be overwritten")
-	flag.StringVar(&a.VarFilePath, "var", "", "the optional var file path.")
+	flag.Var(&a.VarFilePaths, "var", "the optional var file path.")
 	flag.Parse()
 	return
 }

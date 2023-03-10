@@ -53,6 +53,14 @@ func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
 
 // setUnscopedVar parses and sets an unscoped variable from the given args.
 func (i *Interpreter) setUnscopedVar(args [][]byte) {
+	for k, uv := range i.state.unscopedVars {
+		if string(args[0]) == uv.name {
+			// Update existing variable.
+			i.state.unscopedVars[k].value = i.variable(args).value
+			return
+		}
+	}
+
 	i.state.unscopedVars = append(i.state.unscopedVars, i.variable(args))
 }
 

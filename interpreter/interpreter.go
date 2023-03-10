@@ -23,11 +23,22 @@ type Interpreter struct {
 }
 
 type Options struct {
-	InPath      string
-	OutPath     string
-	VarFilePath string
-	Indent      bool
-	NoStats     bool
+	InPath       string
+	OutPath      string
+	VarFilePaths VarFilePaths
+	Indent       bool
+	NoStats      bool
+}
+
+type VarFilePaths []string
+
+func (vp *VarFilePaths) String() string {
+	return strings.Join(*vp, " ")
+}
+
+func (vp *VarFilePaths) Set(v string) (err error) {
+	*vp = append(*vp, v)
+	return
 }
 
 type state struct {
@@ -67,32 +78,39 @@ func New(opts *Options) (i Interpreter) {
 		},
 	}
 
-	// Check if the global var file exists and read it into the memory.
-	vFile := opts.VarFilePath
-	_, err := os.Stat(vFile)
-	if err != nil {
-		// Look in the current working directory.
-		_, err = os.Stat(varFileName)
+	// Look in the current working directory.
+	vFiles := opts.VarFilePaths
+	if len(opts.VarFilePaths) == 0 {
+		_, err := os.Stat(varFileName)
 		if err != nil {
 			return
 		}
-		vFile = varFileName
+		vFiles = []string{varFileName}
 	}
-	cont, err := os.ReadFile(vFile)
-	if err != nil {
-		log.Fatal().Err(err).Msg("unable to read global import variable file")
-	}
-	cutSet := []byte{'\n'}
-	lines := bytes.Split(cont, cutSet)
-	for _, l := range lines {
-		split := bytes.Split(i.CutPrefix(l), []byte{' '})
-		if string(split[0]) != commandVar {
-			continue
-		}
 
-		// Skip the var declaration keyword.
-		i.setUnscopedVar(split[1:])
+	// Check if the global var file exists and read it into the memory.
+	for _, vf := range vFiles {
+		_, err := os.Stat(vf)
+		if err != nil {
+			return
+		}
+		cont, err := os.ReadFile(vf)
+		if err != nil {
+			log.Fatal().Err(err).Msg("unable to read global import variable file")
+		}
+		cutSet := []byte{'\n'}
+		lines := bytes.Split(cont, cutSet)
+		for _, l := range lines {
+			split := bytes.Split(i.CutPrefix(l), []byte{' '})
+			if string(split[0]) != commandVar {
+				continue
+			}
+
+			// Skip the var declaration keyword.
+			i.setUnscopedVar(split[1:])
+		}
 	}
+
 	return
 }
 

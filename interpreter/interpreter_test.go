@@ -40,11 +40,11 @@ func TestInterpreter(t *testing.T) {
 	)
 	r.NoError(t, os.MkdirAll(testGoldDir, 0700))
 	ip := New(&Options{
-		InPath:      testSrcDir,
-		OutPath:     testDestDir,
-		Indent:      true,
-		NoStats:     true,
-		VarFilePath: filepath.Join("testdata", "fastplate.var"),
+		InPath:       testSrcDir,
+		OutPath:      testDestDir,
+		Indent:       true,
+		NoStats:      true,
+		VarFilePaths: []string{filepath.Join("testdata", "fastplate.var")},
 	})
 	r.NoError(t, ip.Start())
 
@@ -146,11 +146,11 @@ func BenchmarkFileInterpretation(b *testing.B) {
 func BenchmarkFileWrites(b *testing.B) {
 	var testDir = filepath.Join("testdata", "dest")
 	imp := New(&Options{
-		InPath:      filepath.Join("testdata", "src", "rootfile.yaml"),
-		OutPath:     filepath.Join(testDir, "rootfile.yaml"),
-		VarFilePath: filepath.Join("testdata", "fastplate.var"),
-		Indent:      true,
-		NoStats:     true,
+		InPath:       filepath.Join("testdata", "src", "rootfile.yaml"),
+		OutPath:      filepath.Join(testDir, "rootfile.yaml"),
+		VarFilePaths: []string{filepath.Join("testdata", "fastplate.var")},
+		Indent:       true,
+		NoStats:      true,
 	})
 	r.NoError(b, os.MkdirAll(testDir, 0700))
 
