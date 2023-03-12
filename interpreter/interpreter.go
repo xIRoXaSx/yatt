@@ -80,15 +80,14 @@ func New(opts *Options) (i Interpreter) {
 
 	// Look in the current working directory.
 	vFiles := opts.VarFilePaths
-	if len(opts.VarFilePaths) == 0 {
+	if len(vFiles) == 0 {
 		_, err := os.Stat(varFileName)
-		if err != nil {
-			return
+		if err == nil {
+			vFiles = []string{varFileName}
 		}
-		vFiles = []string{varFileName}
 	}
 
-	// Check if the global var file exists and read it into the memory.
+	// Check if the global var files exist and read it into the memory.
 	for _, vf := range vFiles {
 		_, err := os.Stat(vf)
 		if err != nil {
@@ -96,16 +95,14 @@ func New(opts *Options) (i Interpreter) {
 		}
 		cont, err := os.ReadFile(vf)
 		if err != nil {
-			log.Fatal().Err(err).Msg("unable to read global import variable file")
+			log.Fatal().Err(err).Str("path", vf).Msg("unable to read global variable file")
 		}
-		cutSet := []byte{'\n'}
-		lines := bytes.Split(cont, cutSet)
+		lines := bytes.Split(cont, []byte{'\n'})
 		for _, l := range lines {
 			split := bytes.Split(i.CutPrefix(l), []byte{' '})
 			if string(split[0]) != commandVar {
 				continue
 			}
-
 			// Skip the var declaration keyword.
 			i.setUnscopedVar(split[1:])
 		}
