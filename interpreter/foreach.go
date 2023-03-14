@@ -38,7 +38,7 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			_, err = out.Write(append(mod, i.splitChars...))
+			_, err = out.Write(append(mod, i.lineEnding...))
 			if err != nil {
 				return
 			}

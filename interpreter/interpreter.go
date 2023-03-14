@@ -20,7 +20,7 @@ type Interpreter struct {
 	opts       *Options
 	prefixes   []string
 	state      state
-	splitChars []byte
+	lineEnding []byte
 }
 
 type Options struct {
@@ -71,7 +71,7 @@ func New(opts *Options) (i Interpreter) {
 	i = Interpreter{
 		opts:       opts,
 		prefixes:   defaultImportPrefixes(),
-		splitChars: []byte("\n"),
+		lineEnding: []byte("\n"),
 		state: state{
 			ignoreIndex:  map[string]int8{},
 			scopedVars:   map[string][]variable{},
@@ -82,7 +82,7 @@ func New(opts *Options) (i Interpreter) {
 	}
 
 	if opts.UseCRLF {
-		i.splitChars = []byte("\r\n")
+		i.lineEnding = []byte("\r\n")
 	}
 
 	// Look in the current working directory.
@@ -104,7 +104,7 @@ func New(opts *Options) (i Interpreter) {
 		if err != nil {
 			log.Fatal().Err(err).Str("path", vf).Msg("unable to read global variable file")
 		}
-		lines := bytes.Split(cont, i.splitChars)
+		lines := bytes.Split(cont, i.lineEnding)
 		for _, l := range lines {
 			split := bytes.Split(i.CutPrefix(l), []byte{' '})
 			if string(split[0]) != commandVar {
@@ -119,7 +119,7 @@ func New(opts *Options) (i Interpreter) {
 }
 
 func (i *Interpreter) TrimLine(b, prefix []byte) []byte {
-	return bytes.Trim(bytes.TrimPrefix(b, prefix), string(i.splitChars)+" ")
+	return bytes.Trim(bytes.TrimPrefix(b, prefix), string(i.lineEnding)+" ")
 }
 
 func (i *Interpreter) CutPrefix(b []byte) (ret []byte) {
@@ -233,7 +233,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 	}
 
 	// Append indention to all linebreaks, prepend to the first line.
-	cutSet := i.splitChars
+	cutSet := i.lineEnding
 	if len(indent) > 0 {
 		cont = bytes.ReplaceAll(cont, cutSet, append(cutSet, indent...))
 		cont = append(indent, cont...)
