@@ -18,6 +18,7 @@ func parseFlags() (a importer.Options) {
 	flag.BoolVar(&a.NoStats, "no-stats", false, "do not print stats at the end of the execution")
 	flag.StringVar(&a.InPath, "in", "", "the root path")
 	flag.StringVar(&a.OutPath, "out", "", "the output path. If not used, in will be overwritten")
+	flag.BoolVar(&a.UseCRLF, "crlf", false, "whether to split lines by \\r\\n or \\n")
 	flag.Var(&a.VarFilePaths, "var", "the optional var file path.")
 	flag.Parse()
 	return
@@ -36,11 +37,11 @@ func main() {
 	if opts.OutPath == "" {
 		r := bufio.NewReader(os.Stdin)
 		fmt.Printf("Are you sure that you want to overwrite %s? [y/N] ", opts.InPath)
-		b, err := r.ReadBytes('\n')
+		b, err := r.ReadByte()
 		if err != nil {
 			log.Fatal().Err(err).Msg("unable to read input")
 		}
-		if bytes.ToLower([]byte{b[0]})[0] != 'y' {
+		if bytes.ToLower([]byte{b})[0] != 'y' {
 			log.Fatal().Err(err).Msg("canceled")
 		}
 		opts.OutPath = opts.InPath

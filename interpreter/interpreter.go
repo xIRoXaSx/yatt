@@ -17,9 +17,10 @@ import (
 const varFileName = "fastplate.var"
 
 type Interpreter struct {
-	opts     *Options
-	prefixes []string
-	state    state
+	opts       *Options
+	prefixes   []string
+	state      state
+	lineEnding []byte
 }
 
 type Options struct {
@@ -27,6 +28,7 @@ type Options struct {
 	OutPath      string
 	VarFilePaths VarFilePaths
 	Indent       bool
+	UseCRLF      bool
 	NoStats      bool
 }
 
@@ -67,8 +69,9 @@ func defaultImportPrefixes() []string {
 
 func New(opts *Options) (i Interpreter) {
 	i = Interpreter{
-		opts:     opts,
-		prefixes: defaultImportPrefixes(),
+		opts:       opts,
+		prefixes:   defaultImportPrefixes(),
+		lineEnding: []byte("\n"),
 		state: state{
 			ignoreIndex:  map[string]int8{},
 			scopedVars:   map[string][]variable{},
@@ -76,6 +79,10 @@ func New(opts *Options) (i Interpreter) {
 			foreach:      map[string]foreach{},
 			Mutex:        &sync.Mutex{},
 		},
+	}
+
+	if opts.UseCRLF {
+		i.lineEnding = []byte("\r\n")
 	}
 
 	// Look in the current working directory.
@@ -97,7 +104,7 @@ func New(opts *Options) (i Interpreter) {
 		if err != nil {
 			log.Fatal().Err(err).Str("path", vf).Msg("unable to read global variable file")
 		}
-		lines := bytes.Split(cont, []byte{'\n'})
+		lines := bytes.Split(cont, i.lineEnding)
 		for _, l := range lines {
 			split := bytes.Split(i.CutPrefix(l), []byte{' '})
 			if string(split[0]) != commandVar {
@@ -112,7 +119,7 @@ func New(opts *Options) (i Interpreter) {
 }
 
 func (i *Interpreter) TrimLine(b, prefix []byte) []byte {
-	return bytes.Trim(bytes.TrimPrefix(b, prefix), "\n ")
+	return bytes.Trim(bytes.TrimPrefix(b, prefix), string(i.lineEnding)+" ")
 }
 
 func (i *Interpreter) CutPrefix(b []byte) (ret []byte) {
@@ -142,7 +149,7 @@ func (i *Interpreter) Start() (err error) {
 	}
 
 	if !i.opts.NoStats {
-		fmt.Printf("Execution took %v\n", el)
+		fmt.Println("Execution took", el)
 	}
 	return
 }
@@ -221,12 +228,12 @@ func (i *Interpreter) runFileMode() (err error) {
 func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Writer) (err error) {
 	cont, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Printf("warn: unable to read file %s: %v\n", filePath, err)
+		log.Warn().Err(err).Str("file", filePath).Msg("unable to read file")
 		return
 	}
 
 	// Append indention to all linebreaks, prepend to the first line.
-	cutSet := []byte{'\n'}
+	cutSet := i.lineEnding
 	if len(indent) > 0 {
 		cont = bytes.ReplaceAll(cont, cutSet, append(cutSet, indent...))
 		cont = append(indent, cont...)

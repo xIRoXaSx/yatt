@@ -19,6 +19,7 @@ When using fastplate you can pass the listed arguments / options down below.
 | -var {FilePath} | The optional variable file path for unscoped variables.                                        |
 | -no-stats       | Disable stats printing.                                                                        |
 | -indent         | Enable indention. Spaces / tabs in front of `import` statements will be used for the partials. |
+| -crlf           | Split and join contents by CRLF (\r\n) instead of LF (\n).                                     |
 
 ### Example
 1. Complete template "tempalte.json":  
