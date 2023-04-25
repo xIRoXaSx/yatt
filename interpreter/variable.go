@@ -65,7 +65,7 @@ func (i *Interpreter) setUnscopedVar(v [][]byte) {
 
 // resolve resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte, err error) {
+func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []variable) (ret []byte, err error) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {
@@ -112,7 +112,15 @@ func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte, err err
 			}
 
 			values := make([][]byte, len(lookupVars))
+		lv:
 			for j := range lookupVars {
+				for _, av := range additionalVars {
+					if lookupVars[j].name == av.name {
+						values[j] = []byte(av.value)
+						continue lv
+					}
+				}
+
 				values[j] = []byte(lookupVars[j].value)
 			}
 			var mod []byte
@@ -123,6 +131,11 @@ func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte, err err
 			matched := bytes.Join([][]byte{templateStart, m, templateEnd}, []byte{})
 			ret = bytes.ReplaceAll(ret, matched, mod)
 		}
+	}
+
+	for _, v := range additionalVars {
+		matched := bytes.Join([][]byte{templateStart, []byte(v.name), templateEnd}, []byte{})
+		ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
 	}
 	return
 }

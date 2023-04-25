@@ -261,7 +261,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 			}
 
 			var ret []byte
-			ret, err = i.resolve(filePath, l)
+			ret, err = i.resolve(filePath, l, nil)
 			if err != nil {
 				return
 			}
