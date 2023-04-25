@@ -4,7 +4,7 @@ fastplate allows you to split any plain text file into multiple and combine them
 Splitting files in partials has many possible benefits, one of them being to unclutter large files.  
 
 ## Setup
-To use fastpalte, download the latest [release](https://github.com/xIRoXaSx/fastplate/releases) or clone and build the project locally.  
+To use fastplate, download the latest [release](https://github.com/xIRoXaSx/fastplate/releases) or clone and build the project locally.  
 After that, split your files into templates and partials and run fastplate with the required [options](#cli-options).  
 Fitting your requirements, the templating can be adapted to the structure shown in `interpreter/testdata/src` 
 or can be customized to your liking.  
@@ -118,7 +118,7 @@ Shopping list:
 # fastplate var oranges = Oranges
 # fastplate var bananas = Bananas
 # fastplate foreach [ {{apples}}, {{oranges}}, {{bananas}} ]
-{{index}}.) 2x {{value}}
+  {{index}}.) 2x {{value}}
 # fastplate foreachend
 ```
 
@@ -132,7 +132,28 @@ Shopping list:
 
 ---
 
-5. Use functions:
+5. Use a foreach loop to iterate over every **unscoped** variable (`[]` brackets are optional):  
+   File fastplate.var:
+```text
+# fastplate var hello = Hello
+# fastplate var world = World!
+```
+
+```text
+# fastplate foreach [ {{UNSCOPED_VARS}} ]
+  {{index}} -> {{value}}
+# fastplate foreachend
+```
+
+Result:
+```text
+  0 -> Hello
+  1 -> World!
+```
+
+---
+
+6. Use functions:
 ```text
 Shopping list:
   # fastplate var apples = APPLES

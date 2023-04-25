@@ -33,14 +33,9 @@ func (i *Interpreter) appendLine(file string, l []byte) {
 
 func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 	resolve := func(idx int, v variable, file string, out io.Writer) {
-		varOrNil := &v
-		if v == (variable{}) {
-			varOrNil = nil
-		}
-
 		for _, l := range i.state.foreach[file].lines {
 			var mod []byte
-			mod, err = i.resolveForeach(idx, varOrNil, file, l)
+			mod, err = i.resolveForeach(idx, v, file, l)
 			if err != nil {
 				return
 			}
@@ -58,26 +53,14 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 			}
 			continue
 		}
-
 		resolve(j, variable{}, file, out)
-		for _, l := range i.state.foreach[file].lines {
-			var mod []byte
-			mod, err = i.resolveForeach(j, nil, file, l)
-			if err != nil {
-				return
-			}
-			_, err = out.Write(append(mod, i.lineEnding...))
-			if err != nil {
-				return
-			}
-		}
 	}
 	return
 }
 
 // resolveForeach resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolveForeach(index int, v *variable, file string, line []byte) (ret []byte, err error) {
+func (i *Interpreter) resolveForeach(index int, v variable, file string, line []byte) (ret []byte, err error) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {
@@ -97,8 +80,8 @@ func (i *Interpreter) resolveForeach(index int, v *variable, file string, line [
 
 			switch string(varName) {
 			case foreachValue:
-				if v != nil {
-					lookupVar = *v
+				if v != (variable{}) {
+					lookupVar = v
 				} else {
 					lookupVar = i.state.varLookup(file, i.state.foreach[file].variables[index].name)
 				}
