@@ -84,34 +84,60 @@ func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte, err err
 			if len(m) == 0 {
 				continue
 			}
-			varName, fncName := i.unpackFuncName(m)
-			v := i.state.varLookup(fileName, string(varName))
-			if v.name == "" {
+
+			fncName, vars := i.unpackFuncName(m)
+			if len(fncName) == 0 {
+				v := i.state.varLookup(fileName, string(m))
+				if v.value == "" {
+					continue
+				}
+
+				matched := bytes.Join([][]byte{templateStart, m, templateEnd}, []byte{})
+				ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
 				continue
 			}
-			matched := bytes.Join([][]byte{templateStart, []byte(v.name), templateEnd}, []byte{})
-			if len(fncName) > 0 {
-				var mod []byte
-				mod, err = i.executeFunction(string(fncName), []byte(v.value))
-				if err != nil {
-					return
+
+			lookupVars := make([]variable, 0)
+			for j := range vars {
+				v := i.state.varLookup(fileName, string(vars[j]))
+				if v.name == "" {
+					// For some functions, numbers are also used.
+					val := string(vars[j])
+					v = variable{name: val, value: val}
 				}
-				v.value = string(mod)
-				matched = bytes.Join([][]byte{templateStart, fncName, []byte("("), []byte(v.name), []byte(")"), templateEnd}, []byte{})
+				lookupVars = append(lookupVars, v)
 			}
-			ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
+			if len(lookupVars) == 0 {
+				continue
+			}
+
+			values := make([][]byte, len(lookupVars))
+			for j := range lookupVars {
+				values[j] = []byte(lookupVars[j].value)
+			}
+			var mod []byte
+			mod, err = i.executeFunction(string(fncName), values)
+			if err != nil {
+				return
+			}
+			matched := bytes.Join([][]byte{templateStart, m, templateEnd}, []byte{})
+			ret = bytes.ReplaceAll(ret, matched, mod)
 		}
 	}
 	return
 }
 
-func (i *Interpreter) unpackFuncName(b []byte) (v []byte, fncName []byte) {
-	v = b
+func (i *Interpreter) unpackFuncName(b []byte) (fncName []byte, args [][]byte) {
+	args = make([][]byte, 0)
 	fnc := bytes.Split(b, []byte("("))
 	if len(fnc) > 1 {
-		fnc[1] = bytes.Trim(fnc[1], ")")
 		fncName = fnc[0]
-		v = fnc[1]
+		fnc[1] = bytes.Trim(fnc[1], ")")
+
+		args = bytes.Split(fnc[1], []byte(","))
+		for j := range args {
+			args[j] = bytes.TrimSpace(args[j])
+		}
 	}
 	return
 }

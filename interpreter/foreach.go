@@ -76,32 +76,43 @@ func (i *Interpreter) resolveForeach(index int, v variable, file string, line []
 		// Resolve foreach variables.
 		for _, m := range match {
 			var lookupVar variable
-			varName, fncName := i.unpackFuncName(m)
+			fncName, vars := i.unpackFuncName(m)
 
-			switch string(varName) {
-			case foreachValue:
-				if v != (variable{}) {
-					lookupVar = v
-				} else {
-					lookupVar = i.state.varLookup(file, i.state.foreach[file].variables[index].name)
-				}
-				if len(fncName) > 0 {
-					var mod []byte
-					mod, err = i.executeFunction(string(fncName), []byte(lookupVar.value))
-					if err != nil {
-						return
-					}
-					lookupVar.value = string(mod)
-					matched := bytes.Join([][]byte{templateStart, fncName, []byte("("), []byte(lookupVar.name), []byte(")"), templateEnd}, []byte{})
-					ret = bytes.ReplaceAll(ret, matched, []byte(lookupVar.value))
-				}
-			case foreachIndex:
-				lookupVar = variable{value: fmt.Sprint(index)}
-			default:
-				continue
+			lookupVars := make([]variable, 0)
+			if v != (variable{}) {
+				lookupVars = append(lookupVars, v)
 			}
-			group := bytes.Join([][]byte{templateStart, m, templateEnd}, nil)
-			ret = bytes.ReplaceAll(ret, group, []byte(lookupVar.value))
+			for _, varName := range vars {
+				switch string(varName) {
+				case foreachValue:
+					if v == (variable{}) {
+						lookupVars = append(lookupVars, i.state.varLookup(file, i.state.foreach[file].variables[index].name))
+					}
+				case foreachIndex:
+					lookupVars = append(lookupVars, variable{value: fmt.Sprint(index)})
+				default:
+					lookupVars = append(lookupVars, variable{value: string(varName)})
+				}
+			}
+
+			if len(fncName) > 0 {
+				values := make([][]byte, len(lookupVars))
+				for j := range lookupVars {
+					values[j] = []byte(lookupVars[j].value)
+				}
+
+				var mod []byte
+				mod, err = i.executeFunction(string(fncName), values)
+				if err != nil {
+					return
+				}
+				lookupVar.value = string(mod)
+			}
+
+			for _, v := range lookupVars {
+				matched := bytes.Join([][]byte{templateStart, m, templateEnd}, []byte{})
+				ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
+			}
 		}
 	}
 	return
