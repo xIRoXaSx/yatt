@@ -61,8 +61,8 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 // If the variable could not be found, the placeholders will not get replaced!
 func (i *Interpreter) resolveForeach(index int, v variable, file string, line []byte) (ret []byte, err error) {
 	feVars := []variable{
-		{name: "value", value: ""},
-		{name: "index", value: fmt.Sprint(index)},
+		{name: foreachValue, value: ""},
+		{name: foreachIndex, value: fmt.Sprint(index)},
 	}
 	if index < len(i.state.foreach[file].variables) {
 		feVars[0].value = i.state.varLookup(file, i.state.foreach[file].variables[index].name).value
