@@ -2,7 +2,7 @@
 build_docker() {
   . ./.env
   sudo docker build ../ --file ./dockerfile \
-     -t="${IMG_TAG}" \
+     -t="${IMG_TAG%:*}:$(git describe --tags --abbrev=0 || echo 'latest')" \
      --build-arg="GOOS=${GOOS}" \
      --build-arg="GOARCH=${GOARCH}"
 }
@@ -21,5 +21,9 @@ run_docker_cli() {
 
 run_docker_multi_arch_build() {
   . ./docker/.env
-  sudo docker run --rm -it -e="VERSION=${VERSION}" -v="$PWD:/data:ro" -v="$PWD/bin:/build" -v="$PWD/docker/multi_arch_build.sh:/work/multi_arch_build.sh" "${IMG_MULTI_ARCH_TAG}"
+  sudo docker run --rm -it \
+    -e="VERSION=${VERSION}" \
+    -v="$PWD:/data:ro" \
+    -v="$PWD/bin:/build" \
+    "${IMG_MULTI_ARCH_TAG}"
 }

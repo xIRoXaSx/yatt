@@ -55,11 +55,20 @@ variables without passing in the `-var` argument.
 #### Function
 You can use the following functions for any type of variable:
 
-| Function name | Description                                                                 | Example              |
-|---------------|-----------------------------------------------------------------------------|----------------------|
-| lower()       | Prints the variable's value in lower case.                                  | `{{lower(varName)}}` |
-| upper()       | Prints the variable's value in upper case.                                  | `{{upper(varName)}}` |
-| cap()         | Prints the first letter of each word of the variable's value in upper case. | `{{cap(varName)}}`   |
+| Function name | Description                                                                          | Example                  |
+|---------------|--------------------------------------------------------------------------------------|--------------------------|
+| add()         | Adds the given numbers (variable or static values possible).                         | `{{add(varName, ...)}}`  |
+| sub()         | Subtracts the given numbers from the first one (variable or static values possible). | `{{sub(varName, ...)}}`  |
+| mult()        | Multiplies the given numbers (variable or static values possible).                   | `{{mult(varName, ...)}}` |
+| div()         | Divides the given numbers from the first one (variable or static values possible).   | `{{div(varName, ...)}}`  |
+| mod()         | Calculates the modulo (variable or static values possible).                          | `{{mod(varName, ...)}}`  |
+| sha1()        | Calculates the SHA1 sum of the given file.                                           | `{{sha1(file_path)}}`    |
+| sha256()      | Calculates the SHA256 sum of the given file.                                         | `{{sha256(file_path)}}`  |
+| sha512()      | Calculates the SHA256 sum of the given file.                                         | `{{sha512(file_path)}}`  |
+| md5()         | Calculates the MD5 sum of the given file.                                            | `{{md5(file_path)}}`     |
+| lower()       | Prints the variable's value in lower case.                                           | `{{lower(varName)}}`     |
+| upper()       | Prints the variable's value in upper case.                                           | `{{upper(varName)}}`     |
+| cap()         | Prints the first letter of each word of the variable's value in upper case.          | `{{cap(varName)}}`       |
 
 
 ### Example
