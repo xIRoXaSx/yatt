@@ -1,0 +1,14 @@
+# Functions can be called by the following syntax: {{function_name(arg1, arg2, ...)}}
+# Variables given to the function call do not need to be surrounded by braces (e.g.: function_name(var1, var2)).
+Examples: |
+  # fastplate var var1 = 1
+  # fastplate var var2 = 2
+  Add:            {{add(var1, var2, 20)}} (1 + 2 + 20)
+  Subtract:       {{sub(20, var1, var2)}} (20 - 1 - 2)
+  Multiplication: {{mult(var1, var2, 20)}} (20 * 1 * 2)
+  Divide:         {{div(20, var1, var2}} (20 / 1 / 2)
+  Modulo:         {{mod(3, 2)}} (3 % 2)
+  Sha1Sum:        {{sha1(./testdata/src/partials/functions.yaml)}}
+  Sha256Sum:      {{sha256(./testdata/src/partials/functions.yaml)}}
+  Sha512Sum:      {{sha512(./testdata/src/partials/functions.yaml)}}
+  MD5:            {{md5(./testdata/src/partials/functions.yaml)}}

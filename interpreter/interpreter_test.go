@@ -3,6 +3,8 @@ package importer
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,8 +37,8 @@ func TestInterpreter(t *testing.T) {
 		testDestDir      = filepath.Join("testdata", "dest")
 		testSrcDir       = filepath.Join("testdata", "src")
 		testGoldDir      = filepath.Join("testdata", "gold")
-		testGoldDirMode  = filepath.Join(testGoldDir, "dirMode.zip")
-		testGoldFileMode = filepath.Join(testGoldDir, "fileMode.zip")
+		testGoldDirMode  = filepath.Join(testGoldDir, "dirMode.sum")
+		testGoldFileMode = filepath.Join(testGoldDir, "fileMode.sum")
 	)
 	r.NoError(t, os.MkdirAll(testGoldDir, 0700))
 	ip := New(&Options{
@@ -92,35 +94,12 @@ func testInterpreter(t *testing.T, ip Interpreter, timeSeed time.Time, goldPath 
 	r.NoError(t, zw.Flush())
 	r.NoError(t, zw.CloseWriter())
 
-	dmGold, err := os.Open(goldPath)
-	defer func() {
-		r.NoError(t, dmGold.Close())
-	}()
+	// Comment back in if gold sample(s) need(s) to be updated.
+	//r.NoError(t, updateGoldSample(goldPath, buf.Bytes()))
 
-	stat, err := dmGold.Stat()
+	goldSum, err := os.ReadFile(goldPath)
 	r.NoError(t, err)
-	zrGold, err := zip.NewReader(dmGold, stat.Size())
-	r.NoError(t, err)
-
-	// Loop over all zipped files of the gold example.
-	for _, f := range zrGold.File {
-		zf, err := f.Open()
-		r.NoError(t, err)
-		defer func() {
-			r.NoError(t, zf.Close())
-		}()
-		b, err := io.ReadAll(zf)
-		r.NoError(t, err)
-		_ = b
-		// Read and compare the buffered zip bytes.
-		zr, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
-		r.NoError(t, err)
-		goldFile, err := zr.Open(f.Name)
-		r.NoError(t, err)
-		g, err := io.ReadAll(goldFile)
-		r.NoError(t, err)
-		r.Equal(t, b, g)
-	}
+	r.Exactly(t, goldSum, generateHashSum(buf.Bytes()))
 }
 
 func BenchmarkFileInterpretation(b *testing.B) {
@@ -158,4 +137,22 @@ func BenchmarkFileWrites(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r.NoError(b, imp.Start())
 	}
+}
+
+//
+// Helper
+//
+
+func generateHashSum(b []byte) (sum []byte) {
+	h := sha1.New()
+	h.Write(b)
+	sb := h.Sum(nil)
+	sum = make([]byte, hex.EncodedLen(len(sb)))
+	hex.Encode(sum, sb)
+	return
+}
+
+func updateGoldSample(file string, b []byte) (err error) {
+	err = os.WriteFile(file, generateHashSum(b), 0500)
+	return
 }

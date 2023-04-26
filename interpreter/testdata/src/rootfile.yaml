@@ -31,11 +31,6 @@ ImportExample:
   # You can declare a fastplate.var file or use the optional "-var <file_path>" argument to define unscoped / global variables.
   # This allows you to use variables regardless of the template.
   # The following options are valid for both scopes: x = y, x= y, x =y, x=y.
-  # Variable values can be modified with these calls as well. The syntax to do so is {{function_name(variable_name)}}
-  # Available functions:
-  # - upper() -> Prints the variable's value in upper case.
-  # - lower() -> Prints the variable's value in lower case.
-  # - cap()   -> Prints the variable's value with capitalized words.
   # Declaring a variable:
   #   # fastplate var test = 1
   # Using the syntax:
@@ -48,6 +43,9 @@ ImportExample:
     Threshold: {{scoped_threshold}}
     Message: The threshold of {{scoped_threshold}} has been reached.
     # fastplate import ./testdata/src/partials/varscopes.yaml
+
+  Functions:
+    # fastplate import ./testdata/src/partials/functions.yaml
 
   # Using foreach loops
   # ~-~-~-~-~-~-~-~-~-~

@@ -2,9 +2,16 @@ package importer
 
 import (
 	"bytes"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"math"
+	"os"
 	"strconv"
 
 	"golang.org/x/text/cases"
@@ -15,7 +22,15 @@ const (
 	functionLower      = "lower"
 	functionUpper      = "upper"
 	functionCapitalize = "cap"
+	functionAddition   = "add"
+	functionSubtract   = "sub"
+	functionDivide     = "div"
+	functionMultiply   = "mult"
 	functionModulus    = "mod"
+	functionSha1       = "sha1"
+	functionSha256     = "sha256"
+	functionSha512     = "sha512"
+	functionShaMd5     = "md5"
 )
 
 func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byte, err error) {
@@ -34,24 +49,164 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 	case functionCapitalize:
 		ret = cases.Title(language.English, cases.NoLower).Bytes(args[0])
 
-	case functionModulus:
+	case functionAddition:
 		var (
-			m1 float64
-			m2 float64
+			floats []float64
+			sum    float64
 		)
+		if len(args) < 2 {
+			err = errors.New("add: at least 2 args expected")
+			return
+		}
+		floats, err = parseFloats(args)
+		if err != nil {
+			return
+		}
+
+		for j := range floats {
+			sum += floats[j]
+		}
+		ret = []byte(fmt.Sprint(sum))
+
+	case functionSubtract:
+		var (
+			floats []float64
+			sum    float64
+		)
+		if len(args) < 2 {
+			err = errors.New("sub: at least 2 args expected")
+			return
+		}
+		floats, err = parseFloats(args)
+		if err != nil {
+			return
+		}
+
+		sum = floats[0]
+		for _, f := range floats[1:] {
+			sum -= f
+		}
+		ret = []byte(fmt.Sprint(sum))
+
+	case functionMultiply:
+		var (
+			floats []float64
+			sum    float64
+		)
+		if len(args) < 2 {
+			err = errors.New("mult: at least 2 args expected")
+			return
+		}
+		floats, err = parseFloats(args)
+		if err != nil {
+			return
+		}
+
+		sum = floats[0]
+		for _, f := range floats[1:] {
+			sum *= f
+		}
+		ret = []byte(fmt.Sprint(sum))
+
+	case functionDivide:
+		var (
+			floats []float64
+			sum    float64
+		)
+		if len(args) < 2 {
+			err = errors.New("div: at least 2 args expected")
+			return
+		}
+		floats, err = parseFloats(args)
+		if err != nil {
+			return
+		}
+
+		sum = floats[0]
+		for _, f := range floats[1:] {
+			sum /= f
+		}
+		ret = []byte(fmt.Sprint(sum))
+
+	case functionModulus:
+		var floats []float64
 		if len(args) != 2 {
-			err = errors.New("modulus args must have exactly 2 args")
+			err = errors.New("mod: exactly 1 arg expected")
 			return
 		}
-		m1, err = strconv.ParseFloat(string(bytes.TrimSpace(args[0])), 32)
+		floats, err = parseFloats(args)
 		if err != nil {
 			return
 		}
-		m2, err = strconv.ParseFloat(string(bytes.TrimSpace(args[1])), 32)
+		ret = []byte(fmt.Sprint(math.Mod(floats[0], floats[1])))
+
+	case functionSha1:
+		if len(args) != 1 {
+			err = errors.New("sha1: exactly 1 arg expected")
+			return
+		}
+
+		ret, err = encodeHashToHex(sha1.New(), string(args[0]))
 		if err != nil {
 			return
 		}
-		ret = []byte(fmt.Sprint(math.Mod(m1, m2)))
+
+	case functionSha256:
+		if len(args) != 1 {
+			err = errors.New("sha256: exactly 1 arg expected")
+			return
+		}
+
+		ret, err = encodeHashToHex(sha256.New(), string(args[0]))
+		if err != nil {
+			return
+		}
+
+	case functionSha512:
+		if len(args) != 1 {
+			err = errors.New("sha512: exactly 1 arg expected")
+			return
+		}
+
+		ret, err = encodeHashToHex(sha512.New(), string(args[0]))
+		if err != nil {
+			return
+		}
+
+	case functionShaMd5:
+		if len(args) != 1 {
+			err = errors.New("md5: exactly 1 arg expected")
+			return
+		}
+
+		ret, err = encodeHashToHex(md5.New(), string(args[0]))
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func encodeHashToHex(h hash.Hash, file string) (sum []byte, err error) {
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return
+	}
+
+	h.Write(b)
+	s := h.Sum(nil)
+	sum = make([]byte, hex.EncodedLen(len(s)))
+	hex.Encode(sum, s)
+	return
+}
+
+func parseFloats(args [][]byte) (floats []float64, err error) {
+	floats = make([]float64, len(args))
+	for i := range args {
+		floats[i], err = strconv.ParseFloat(string(bytes.TrimSpace(args[i])), 64)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
