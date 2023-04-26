@@ -1,7 +1,6 @@
 package importer
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 )
@@ -61,48 +60,16 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 // resolveForeach resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
 func (i *Interpreter) resolveForeach(index int, v variable, file string, line []byte) (ret []byte, err error) {
-	ret = line
-	begin := bytes.Split(line, templateStart)
-	if len(begin) == 1 {
-		return
+	feVars := []variable{
+		{name: foreachValue, value: ""},
+		{name: foreachIndex, value: fmt.Sprint(index)},
+	}
+	if index < len(i.state.foreach[file].variables) {
+		feVars[0].value = i.state.varLookup(file, i.state.foreach[file].variables[index].name).value
+	} else if v != (variable{}) {
+		feVars[0].value = v.value
 	}
 
-	for _, b := range begin {
-		match := bytes.Split(b, templateEnd)
-		if len(match) == 1 {
-			continue
-		}
-
-		// Resolve foreach variables.
-		for _, m := range match {
-			var lookupVar variable
-			varName, fncName := i.unpackFuncName(m)
-
-			switch string(varName) {
-			case foreachValue:
-				if v != (variable{}) {
-					lookupVar = v
-				} else {
-					lookupVar = i.state.varLookup(file, i.state.foreach[file].variables[index].name)
-				}
-				if len(fncName) > 0 {
-					var mod []byte
-					mod, err = i.executeFunction(string(fncName), []byte(lookupVar.value))
-					if err != nil {
-						return
-					}
-					lookupVar.value = string(mod)
-					matched := bytes.Join([][]byte{templateStart, fncName, []byte("("), []byte(lookupVar.name), []byte(")"), templateEnd}, []byte{})
-					ret = bytes.ReplaceAll(ret, matched, []byte(lookupVar.value))
-				}
-			case foreachIndex:
-				lookupVar = variable{value: fmt.Sprint(index)}
-			default:
-				continue
-			}
-			group := bytes.Join([][]byte{templateStart, m, templateEnd}, nil)
-			ret = bytes.ReplaceAll(ret, group, []byte(lookupVar.value))
-		}
-	}
+	ret, err = i.resolve(file, line, feVars)
 	return
 }

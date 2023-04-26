@@ -65,11 +65,16 @@ func (i *Interpreter) setUnscopedVar(v [][]byte) {
 
 // resolve resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte, err error) {
+func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []variable) (ret []byte, err error) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {
 		return
+	}
+
+	replaceVar := func(varName, replacement []byte) []byte {
+		matched := bytes.Join([][]byte{templateStart, varName, templateEnd}, []byte{})
+		return bytes.ReplaceAll(ret, matched, replacement)
 	}
 
 	for _, b := range begin {
@@ -84,34 +89,72 @@ func (i *Interpreter) resolve(fileName string, line []byte) (ret []byte, err err
 			if len(m) == 0 {
 				continue
 			}
-			varName, fncName := i.unpackFuncName(m)
-			v := i.state.varLookup(fileName, string(varName))
-			if v.name == "" {
+
+			fncName, vars := i.unpackFuncName(m)
+			if len(fncName) == 0 {
+				// No function found, try to lookup and replace variable.
+				v := i.state.varLookup(fileName, string(m))
+				if v.value == "" {
+					continue
+				}
+
+				ret = replaceVar(m, []byte(v.value))
 				continue
 			}
-			matched := bytes.Join([][]byte{templateStart, []byte(v.name), templateEnd}, []byte{})
-			if len(fncName) > 0 {
-				var mod []byte
-				mod, err = i.executeFunction(string(fncName), []byte(v.value))
-				if err != nil {
-					return
+
+			lookupVars := make([]variable, 0)
+			for j := range vars {
+				v := i.state.varLookup(fileName, string(vars[j]))
+				if v.name == "" {
+					// For some functions, numbers are also used. Add them.
+					val := string(vars[j])
+					v = variable{name: val, value: val}
 				}
-				v.value = string(mod)
-				matched = bytes.Join([][]byte{templateStart, fncName, []byte("("), []byte(v.name), []byte(")"), templateEnd}, []byte{})
+				lookupVars = append(lookupVars, v)
 			}
-			ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
+			if len(lookupVars) == 0 {
+				continue
+			}
+
+			values := make([][]byte, len(lookupVars))
+		lv:
+			for j := range lookupVars {
+				for _, av := range additionalVars {
+					// Overwrite variable value if the names match.
+					// This may be the case for "foreach"-variables.
+					if lookupVars[j].name == av.name {
+						values[j] = []byte(av.value)
+						continue lv
+					}
+				}
+				values[j] = []byte(lookupVars[j].value)
+			}
+			var mod []byte
+			mod, err = i.executeFunction(string(fncName), values)
+			if err != nil {
+				return
+			}
+			ret = replaceVar(m, mod)
 		}
+	}
+
+	for _, v := range additionalVars {
+		ret = replaceVar([]byte(v.name), []byte(v.value))
 	}
 	return
 }
 
-func (i *Interpreter) unpackFuncName(b []byte) (v []byte, fncName []byte) {
-	v = b
+func (i *Interpreter) unpackFuncName(b []byte) (fncName []byte, args [][]byte) {
+	args = make([][]byte, 0)
 	fnc := bytes.Split(b, []byte("("))
 	if len(fnc) > 1 {
-		fnc[1] = bytes.Trim(fnc[1], ")")
 		fncName = fnc[0]
-		v = fnc[1]
+		fnc[1] = bytes.Trim(fnc[1], ")")
+
+		args = bytes.Split(fnc[1], []byte(","))
+		for j := range args {
+			args[j] = bytes.TrimSpace(args[j])
+		}
 	}
 	return
 }
