@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"hash"
 	"math"
@@ -55,7 +54,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 			sum    float64
 		)
 		if len(args) < 2 {
-			err = errors.New("add: at least 2 args expected")
+			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
 		floats, err = parseFloats(args)
@@ -74,7 +73,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 			sum    float64
 		)
 		if len(args) < 2 {
-			err = errors.New("sub: at least 2 args expected")
+			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
 		floats, err = parseFloats(args)
@@ -94,7 +93,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 			sum    float64
 		)
 		if len(args) < 2 {
-			err = errors.New("mult: at least 2 args expected")
+			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
 		floats, err = parseFloats(args)
@@ -114,7 +113,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 			sum    float64
 		)
 		if len(args) < 2 {
-			err = errors.New("div: at least 2 args expected")
+			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
 		floats, err = parseFloats(args)
@@ -131,7 +130,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 	case functionModulus:
 		var floats []float64
 		if len(args) != 2 {
-			err = errors.New("mod: exactly 1 arg expected")
+			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
 		floats, err = parseFloats(args)
@@ -142,7 +141,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 
 	case functionSha1:
 		if len(args) != 1 {
-			err = errors.New("sha1: exactly 1 arg expected")
+			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
 
@@ -153,7 +152,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 
 	case functionSha256:
 		if len(args) != 1 {
-			err = errors.New("sha256: exactly 1 arg expected")
+			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
 
@@ -164,7 +163,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 
 	case functionSha512:
 		if len(args) != 1 {
-			err = errors.New("sha512: exactly 1 arg expected")
+			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
 
@@ -175,11 +174,22 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 
 	case functionShaMd5:
 		if len(args) != 1 {
-			err = errors.New("md5: exactly 1 arg expected")
+			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
 
 		ret, err = encodeHashToHex(md5.New(), string(args[0]))
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func parseFloats(args [][]byte) (floats []float64, err error) {
+	floats = make([]float64, len(args))
+	for i := range args {
+		floats[i], err = strconv.ParseFloat(string(bytes.TrimSpace(args[i])), 64)
 		if err != nil {
 			return
 		}
@@ -197,16 +207,5 @@ func encodeHashToHex(h hash.Hash, file string) (sum []byte, err error) {
 	s := h.Sum(nil)
 	sum = make([]byte, hex.EncodedLen(len(s)))
 	hex.Encode(sum, s)
-	return
-}
-
-func parseFloats(args [][]byte) (floats []float64, err error) {
-	floats = make([]float64, len(args))
-	for i := range args {
-		floats[i], err = strconv.ParseFloat(string(bytes.TrimSpace(args[i])), 64)
-		if err != nil {
-			return
-		}
-	}
 	return
 }

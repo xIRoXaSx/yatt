@@ -72,6 +72,11 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 		return
 	}
 
+	replaceVar := func(varName, replacement []byte) []byte {
+		matched := bytes.Join([][]byte{templateStart, varName, templateEnd}, []byte{})
+		return bytes.ReplaceAll(ret, matched, replacement)
+	}
+
 	for _, b := range begin {
 		match := bytes.Split(b, templateEnd)
 		if len(match) == 1 {
@@ -87,13 +92,13 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 
 			fncName, vars := i.unpackFuncName(m)
 			if len(fncName) == 0 {
+				// No function found, try to lookup and replace variable.
 				v := i.state.varLookup(fileName, string(m))
 				if v.value == "" {
 					continue
 				}
 
-				matched := bytes.Join([][]byte{templateStart, m, templateEnd}, []byte{})
-				ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
+				ret = replaceVar(m, []byte(v.value))
 				continue
 			}
 
@@ -101,7 +106,7 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 			for j := range vars {
 				v := i.state.varLookup(fileName, string(vars[j]))
 				if v.name == "" {
-					// For some functions, numbers are also used.
+					// For some functions, numbers are also used. Add them.
 					val := string(vars[j])
 					v = variable{name: val, value: val}
 				}
@@ -115,12 +120,13 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 		lv:
 			for j := range lookupVars {
 				for _, av := range additionalVars {
+					// Overwrite variable value if the names match.
+					// This may be the case for "foreach"-variables.
 					if lookupVars[j].name == av.name {
 						values[j] = []byte(av.value)
 						continue lv
 					}
 				}
-
 				values[j] = []byte(lookupVars[j].value)
 			}
 			var mod []byte
@@ -128,14 +134,12 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 			if err != nil {
 				return
 			}
-			matched := bytes.Join([][]byte{templateStart, m, templateEnd}, []byte{})
-			ret = bytes.ReplaceAll(ret, matched, mod)
+			ret = replaceVar(m, mod)
 		}
 	}
 
 	for _, v := range additionalVars {
-		matched := bytes.Join([][]byte{templateStart, []byte(v.name), templateEnd}, []byte{})
-		ret = bytes.ReplaceAll(ret, matched, []byte(v.value))
+		ret = replaceVar([]byte(v.name), []byte(v.value))
 	}
 	return
 }
