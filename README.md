@@ -1,16 +1,16 @@
 # fastplate
 ## Description
-fastplate allows you to split any plain text file into multiple and combine them when it's required.  
-Splitting files in partials has many possible benefits, one of them being to unclutter large files.  
+A fast templating engine for text files.  
+No matter if you need to unclutter massive files and split them up, do basic calculations or loop over variables, 
+fastplate got you covered!
 
 ## Setup
 To use fastplate, download the latest [release](https://github.com/xIRoXaSx/fastplate/releases) or clone and build the project locally.  
-After that, split your files into templates and partials and run fastplate with the required [options](#cli-options).  
-Fitting your requirements, the templating can be adapted to the structure shown in `interpreter/testdata/src` 
-or can be customized to your liking.  
+After that, create templates of your files and give it a run with the required [options](#cli-options).  
+Fitting your requirements, you can also use optional [variables](#variables), [functions](#functions) and [loop](#loops) features.  
 
 ## CLI options
-When using fastplate you can pass the listed arguments / options down below.  
+You can pass the listed arguments / options down below.  
 
 | Argument        | Description                                                                                    |
 |-----------------|------------------------------------------------------------------------------------------------|
