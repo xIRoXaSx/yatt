@@ -43,13 +43,20 @@ func (vp *VarFilePaths) Set(v string) (err error) {
 	return
 }
 
+type indexer struct {
+	start int
+	len   int
+	mx    *sync.Mutex
+}
+
 type state struct {
-	ignoreIndex  map[string]int8
-	scopedVars   map[string][]variable
-	dependencies map[string][]string
-	unscopedVars []variable
-	foreach      map[string]foreach
-	dirMode      bool
+	ignoreIndex        map[string]int8
+	scopedVars         map[string][]variable
+	dependencies       map[string][]string
+	unscopedVarIndexes map[string]indexer
+	unscopedVars       []variable
+	foreach            map[string]foreach
+	dirMode            bool
 	*sync.Mutex
 }
 
@@ -73,11 +80,12 @@ func New(opts *Options) (i Interpreter) {
 		prefixes:   defaultImportPrefixes(),
 		lineEnding: []byte("\n"),
 		state: state{
-			ignoreIndex:  map[string]int8{},
-			scopedVars:   map[string][]variable{},
-			dependencies: map[string][]string{},
-			foreach:      map[string]foreach{},
-			Mutex:        &sync.Mutex{},
+			ignoreIndex:        map[string]int8{},
+			scopedVars:         map[string][]variable{},
+			dependencies:       map[string][]string{},
+			unscopedVarIndexes: map[string]indexer{},
+			foreach:            map[string]foreach{},
+			Mutex:              &sync.Mutex{},
 		},
 	}
 
@@ -111,7 +119,7 @@ func New(opts *Options) (i Interpreter) {
 				continue
 			}
 			// Skip the var declaration keyword.
-			i.setUnscopedVar(split[1:])
+			i.setUnscopedVar(strings.TrimSuffix(filepath.Base(vf), filepath.Ext(vf)), split[1:])
 		}
 	}
 

@@ -25,16 +25,20 @@ const (
 	functionSubtract   = "sub"
 	functionDivide     = "div"
 	functionMultiply   = "mult"
+	functionMax        = "max"
+	functionMin        = "min"
 	functionModulus    = "mod"
+	functionModulusMin = "modmin"
 	functionSha1       = "sha1"
 	functionSha256     = "sha256"
 	functionSha512     = "sha512"
 	functionShaMd5     = "md5"
+	functionSplit      = "split"
 )
 
 func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byte, err error) {
 	if len(args) == 0 {
-		err = fmt.Errorf("%v: func statement needs at least one char", function)
+		err = fmt.Errorf("%v: func statement needs at least one arg", function)
 		return
 	}
 
@@ -127,10 +131,44 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 		}
 		ret = []byte(fmt.Sprint(sum))
 
+	case functionMax:
+		var floats []float64
+		if len(args) < 2 {
+			err = fmt.Errorf("%s: at least 2 args expected", function)
+			return
+		}
+		floats, err = parseFloats(args)
+		if err != nil {
+			return
+		}
+
+		max := floats[0]
+		for _, f := range floats[1:] {
+			max = math.Max(max, f)
+		}
+		ret = []byte(fmt.Sprint(max))
+
+	case functionMin:
+		var floats []float64
+		if len(args) < 2 {
+			err = fmt.Errorf("%s: at least 2 args expected", function)
+			return
+		}
+		floats, err = parseFloats(args)
+		if err != nil {
+			return
+		}
+
+		min := floats[0]
+		for _, f := range floats[1:] {
+			min = math.Min(min, f)
+		}
+		ret = []byte(fmt.Sprint(min))
+
 	case functionModulus:
 		var floats []float64
 		if len(args) != 2 {
-			err = fmt.Errorf("%s: exactly 1 arg expected", function)
+			err = fmt.Errorf("%s: exactly 2 args expected", function)
 			return
 		}
 		floats, err = parseFloats(args)
@@ -138,6 +176,19 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 			return
 		}
 		ret = []byte(fmt.Sprint(math.Mod(floats[0], floats[1])))
+
+	case functionModulusMin:
+		var floats []float64
+		if len(args) != 3 {
+			err = fmt.Errorf("%s: exactly 3 args expected", function)
+			return
+		}
+		floats, err = parseFloats(args)
+		if err != nil {
+			return
+		}
+		mod := math.Mod(floats[0], floats[1])
+		ret = []byte(fmt.Sprint(math.Max(floats[2], mod)))
 
 	case functionSha1:
 		if len(args) != 1 {
@@ -182,6 +233,22 @@ func (i *Interpreter) executeFunction(function string, args [][]byte) (ret []byt
 		if err != nil {
 			return
 		}
+
+	case functionSplit:
+		if len(args) != 3 {
+			err = fmt.Errorf("%s: exactly 3 args expected", function)
+			return
+		}
+
+		var ind int
+		ind, err = strconv.Atoi(string(args[2]))
+		if err != nil {
+			return nil, err
+		}
+		sep := bytes.TrimSpace(args[1])
+		sep = bytes.TrimLeft(sep, "\"'")
+		sep = bytes.TrimRight(sep, "\"'")
+		ret = bytes.Split(args[0], sep)[ind]
 	}
 	return
 }
