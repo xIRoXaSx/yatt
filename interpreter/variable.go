@@ -62,7 +62,8 @@ func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 		}
 	}
 	i.state.unscopedVars = append(i.state.unscopedVars, i.variable(v))
-	idx := i.state.unscopedVarIndexes[strings.ToLower(varFile)]
+	lowerVarFile := strings.ToLower(varFile)
+	idx := i.state.unscopedVarIndexes[lowerVarFile]
 	if idx.mx == nil {
 		idx.mx = &sync.Mutex{}
 		idx.start = len(i.state.unscopedVars) - 1
@@ -71,7 +72,7 @@ func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 	defer idx.mx.Unlock()
 
 	idx.len++
-	i.state.unscopedVarIndexes[varFile] = idx
+	i.state.unscopedVarIndexes[lowerVarFile] = idx
 }
 
 // resolve resolves an import variable to its corresponding value.

@@ -53,7 +53,7 @@ fastplate automatically looks for `fastplate.var` in the current working directo
 variables without passing in the `-var` argument.
 
 #### Functions
-Functions can be combined / nested like the following example: `{{func_1(arg1, arg2, {{func_2(arg3, arg4)}})}}`.
+Functions can be combined / nested like in the following example: `{{func_1(arg1, arg2, {{func_2(arg3, arg4)}})}}`.
 You can use the following functions for any type of variable or static values:
 
 | Function name | Description                                                                                   | Example                                |
@@ -94,7 +94,7 @@ This way, fastplate will loop over each unscoped variable automatically (`[]` br
 # fastplate foreachend 
 ```
 
-In addition to the latter option, you can also restrict the used variables to one variable file.  
+In addition to the latter option, you can also restrict the variables to use to one specific variable file.  
 In order to do so, you need to add the prefix `_` and the base name of your var file (without the extension, case-insensitive) 
 like in this example (`[]` brackets are optional):  
 ```
