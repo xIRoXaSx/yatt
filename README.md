@@ -1,16 +1,16 @@
 # fastplate
 ## Description
-fastplate allows you to split any plain text file into multiple and combine them when it's required.  
-Splitting files in partials has many possible benefits, one of them being to unclutter large files.  
+A fast templating engine for text files.  
+No matter if you need to unclutter massive files and split them up, do basic calculations or loop over variables, 
+fastplate got you covered!
 
 ## Setup
 To use fastplate, download the latest [release](https://github.com/xIRoXaSx/fastplate/releases) or clone and build the project locally.  
-After that, split your files into templates and partials and run fastplate with the required [options](#cli-options).  
-Fitting your requirements, the templating can be adapted to the structure shown in `interpreter/testdata/src` 
-or can be customized to your liking.  
+After that, create templates of your files and give it a run with the required [options](#cli-options).  
+Fitting your requirements, you can also use optional [variables](#variables), [functions](#functions) and [loop](#loops) features.  
 
 ## CLI options
-When using fastplate you can pass the listed arguments / options down below.  
+You can pass the listed arguments / options down below.  
 
 | Argument        | Description                                                                                    |
 |-----------------|------------------------------------------------------------------------------------------------|
@@ -52,24 +52,58 @@ The syntax to declare both variable types is the same.
 fastplate automatically looks for `fastplate.var` in the current working directory. If existing, you can use the unscoped 
 variables without passing in the `-var` argument.
 
-#### Function
-You can use the following functions for any type of variable:
+#### Functions
+Functions can be combined / nested like in the following example: `{{func_1(arg1, arg2, {{func_2(arg3, arg4)}})}}`.
+You can use the following functions for any type of variable or static values:
 
-| Function name | Description                                                                          | Example                  |
-|---------------|--------------------------------------------------------------------------------------|--------------------------|
-| add()         | Adds the given numbers (variable or static values possible).                         | `{{add(varName, ...)}}`  |
-| sub()         | Subtracts the given numbers from the first one (variable or static values possible). | `{{sub(varName, ...)}}`  |
-| mult()        | Multiplies the given numbers (variable or static values possible).                   | `{{mult(varName, ...)}}` |
-| div()         | Divides the given numbers from the first one (variable or static values possible).   | `{{div(varName, ...)}}`  |
-| mod()         | Calculates the modulo (variable or static values possible).                          | `{{mod(varName, ...)}}`  |
-| sha1()        | Calculates the SHA1 sum of the given file.                                           | `{{sha1(file_path)}}`    |
-| sha256()      | Calculates the SHA256 sum of the given file.                                         | `{{sha256(file_path)}}`  |
-| sha512()      | Calculates the SHA256 sum of the given file.                                         | `{{sha512(file_path)}}`  |
-| md5()         | Calculates the MD5 sum of the given file.                                            | `{{md5(file_path)}}`     |
-| lower()       | Prints the variable's value in lower case.                                           | `{{lower(varName)}}`     |
-| upper()       | Prints the variable's value in upper case.                                           | `{{upper(varName)}}`     |
-| cap()         | Prints the first letter of each word of the variable's value in upper case.          | `{{cap(varName)}}`       |
+| Function name | Description                                                                                   | Example                                |
+|---------------|-----------------------------------------------------------------------------------------------|----------------------------------------|
+| add()         | Adds the given numbers (variable or static values possible).                                  | `{{add(varName, ...)}}`                |
+| sub()         | Subtracts the given numbers from the first one (variable or static values possible).          | `{{sub(varName, ...)}}`                |
+| mult()        | Multiplies the given numbers (variable or static values possible).                            | `{{mult(varName, ...)}}`               |
+| div()         | Divides the given numbers from the first one (variable or static values possible).            | `{{div(varName, ...)}}`                |
+| max()         | Chooses the maximum of the given numbers (variable or static values possible).                | `{{max(varName, ...)}}`                |
+| min()         | Chooses the minimum of the given numbers (variable or static values possible).                | `{{min(varName, ...)}}`                |
+| mod()         | Calculates the modulo (variable or static values possible).                                   | `{{mod(varName, ...)}}`                |
+| modmin()      | Same as `mod` but defaults to `min` when remainder is 0 (variable or static values possible). | `{{modmin(varName, ..., min)}}`        |
+| sha1()        | Calculates the SHA1 sum of the given file.                                                    | `{{sha1(file_path)}}`                  |
+| sha256()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha256(file_path)}}`                |
+| sha512()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha512(file_path)}}`                |
+| md5()         | Calculates the MD5 sum of the given file.                                                     | `{{md5(file_path)}}`                   |
+| lower()       | Prints the variable's value in lower case.                                                    | `{{lower(varName)}}`                   |
+| upper()       | Prints the variable's value in upper case.                                                    | `{{upper(varName)}}`                   |
+| cap()         | Prints the first letter of each word of the variable's value in upper case.                   | `{{cap(varName)}}`                     |
+| split()       | Splits the value by `seperator` and print the element at `index`.                             | `{{split(varName, seperator, index)}}` |
 
+### Loops
+Looping over multiple variables can be implemented by using the `foreach` syntax.  
+For every iteration you can retrieve the index with `{{index}}` and the value with `{{value}}`.  
+By declaring single variables (no matter if scoped or unscoped), you can loop over selected ones like so (`[]` brackets are optional):  
+```
+# fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+   Insert your value to repeat here.
+# fastplate foreachend 
+```
+
+If you have countless variables, you can put all of those variables into a dedicated [var files](#variables) and use 
+the special variable `{{UNSCOPED_VARS}}`.  
+This way, fastplate will loop over each unscoped variable automatically (`[]` brackets are optional):
+```
+# fastplate foreach [ {{UNSCOPED_VARS}} ]
+   Insert your value to repeat here.
+# fastplate foreachend 
+```
+
+In addition to the latter option, you can also restrict the variables to use to one specific variable file.  
+In order to do so, you need to add the prefix `_` and the base name of your var file (without the extension, case-insensitive) 
+like in this example (`[]` brackets are optional):  
+```
+# fastplate foreach [ {{UNSCOPED_VARS_yourVarFileName}} ]
+   Insert your value to repeat here.
+# fastplate foreachend 
+```
+
+These special variables are currently only supported for the `foreach` loop!
 
 ### Example
 1. Import `src/partials/world.txt` (which contains "World!") into the current template.

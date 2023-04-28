@@ -3,11 +3,13 @@ package importer
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 const (
 	foreachValue        = "value"
 	foreachIndex        = "index"
+	foreachName         = "name"
 	foreachUnscopedVars = "UNSCOPED_VARS"
 )
 
@@ -52,6 +54,16 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 			}
 			continue
 		}
+
+		varFile := strings.TrimPrefix(v.name, foreachUnscopedVars+"_")
+		if varFile != v.name {
+			idx := i.state.unscopedVarIndexes[strings.ToLower(varFile)]
+			for index, unscopedVar := range i.state.unscopedVars[idx.start : idx.start+idx.len] {
+				resolve(index, unscopedVar, file, out)
+			}
+			continue
+		}
+
 		resolve(j, variable{}, file, out)
 	}
 	return
@@ -63,10 +75,12 @@ func (i *Interpreter) resolveForeach(index int, v variable, file string, line []
 	feVars := []variable{
 		{name: foreachValue, value: ""},
 		{name: foreachIndex, value: fmt.Sprint(index)},
+		{name: foreachName, value: v.name},
 	}
 	if index < len(i.state.foreach[file].variables) {
 		feVars[0].value = i.state.varLookup(file, i.state.foreach[file].variables[index].name).value
-	} else if v != (variable{}) {
+	}
+	if v != (variable{}) {
 		feVars[0].value = v.value
 	}
 

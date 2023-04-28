@@ -3,6 +3,7 @@ package importer
 import (
 	"bytes"
 	"strings"
+	"sync"
 )
 
 var (
@@ -52,7 +53,7 @@ func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
 }
 
 // setUnscopedVar parses and sets an unscoped variable from the given args.
-func (i *Interpreter) setUnscopedVar(v [][]byte) {
+func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 	for j, uv := range i.state.unscopedVars {
 		if string(v[0]) == uv.name {
 			// Update existing variable.
@@ -61,6 +62,17 @@ func (i *Interpreter) setUnscopedVar(v [][]byte) {
 		}
 	}
 	i.state.unscopedVars = append(i.state.unscopedVars, i.variable(v))
+	lowerVarFile := strings.ToLower(varFile)
+	idx := i.state.unscopedVarIndexes[lowerVarFile]
+	if idx.mx == nil {
+		idx.mx = &sync.Mutex{}
+		idx.start = len(i.state.unscopedVars) - 1
+	}
+	idx.mx.Lock()
+	defer idx.mx.Unlock()
+
+	idx.len++
+	i.state.unscopedVarIndexes[lowerVarFile] = idx
 }
 
 // resolve resolves an import variable to its corresponding value.
@@ -138,6 +150,13 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 		}
 	}
 
+	if len(bytes.Split(ret, templateStart)) > 1 && !bytes.Equal(ret, line) {
+		ret, err = i.resolve(fileName, ret, additionalVars)
+		if err != nil {
+			return
+		}
+	}
+
 	for _, v := range additionalVars {
 		ret = replaceVar([]byte(v.name), []byte(v.value))
 	}
@@ -146,9 +165,9 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 
 func (i *Interpreter) unpackFuncName(b []byte) (fncName []byte, args [][]byte) {
 	args = make([][]byte, 0)
-	fnc := bytes.Split(b, []byte("("))
+	fnc := bytes.Split(bytes.TrimSpace(b), []byte("("))
 	if len(fnc) > 1 {
-		fncName = fnc[0]
+		fncName = bytes.TrimSpace(fnc[0])
 		fnc[1] = bytes.Trim(fnc[1], ")")
 
 		args = bytes.Split(fnc[1], []byte(","))

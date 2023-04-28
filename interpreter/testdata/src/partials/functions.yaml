@@ -4,15 +4,20 @@ Examples: |
   # fastplate var var1 = 1
   # fastplate var var2 = 2
   # fastplate var var3 = Some test string.
-  Add:            {{add(var1, var2, 20)}} (1 + 2 + 20)
-  Subtract:       {{sub(20, var1, var2)}} (20 - 1 - 2)
-  Multiplication: {{mult(var1, var2, 20)}} (20 * 1 * 2)
-  Divide:         {{div(20, var1, var2}} (20 / 1 / 2)
-  Modulo:         {{mod(3, 2)}} (3 % 2)
-  Sha1Sum:        {{sha1(./testdata/src/partials/functions.yaml)}}
-  Sha256Sum:      {{sha256(./testdata/src/partials/functions.yaml)}}
-  Sha512Sum:      {{sha512(./testdata/src/partials/functions.yaml)}}
-  MD5:            {{md5(./testdata/src/partials/functions.yaml)}}
-  Lower:          {{lower(var3)}}  
-  Upper:          {{upper(var3)}}
-  Cap:            {{cap(var3)}}
+  # fastplate var var4 = Some test string = with = extra = separators.
+  Add:               {{add(var1, var2, 20)}}
+  Subtract:          {{sub(20, var1, var2)}} (20 - 1 - 2)
+  Multiplication:    {{mult(var1, var2, 20)}} (20 * 1 * 2)
+  Divide:            {{div(20, var1, var2}} (20 / 1 / 2)
+  Max:               {{max(var1, 20, 50, var2)}}
+  Min:               {{min(var1, 20, 50, var2)}}
+  Modulo:            {{mod(3, 2)}} (3 % 2)
+  Modulo with min:  {{modmin(9, 9, 2)}} (3 % 2)
+  Sha1Sum:           {{sha1(./testdata/src/partials/functions.yaml)}}
+  Sha256Sum:         {{sha256(./testdata/src/partials/functions.yaml)}}
+  Sha512Sum:         {{sha512(./testdata/src/partials/functions.yaml)}}
+  MD5:               {{md5(./testdata/src/partials/functions.yaml)}}
+  Lower:             {{lower(var3)}}  
+  Upper:             {{upper(var3)}}
+  Cap:               {{cap(var3)}}
+  Split:             {{split(var4, '=' , 2)}}
