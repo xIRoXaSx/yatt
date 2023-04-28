@@ -18,7 +18,7 @@ func (s state) lookupUnscoped(name string) variable {
 }
 
 func (s state) lookupScoped(fileName, name string) variable {
-	for _, v := range s.scopedVars[fileName] {
+	for _, v := range s.scopedRegistry.scopedVars[fileName] {
 		if v.name == name {
 			return v
 		}
