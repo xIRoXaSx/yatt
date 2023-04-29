@@ -66,6 +66,10 @@ You can use the following functions for any type of variable or static values:
 | min()         | Chooses the minimum of the given numbers (variable or static values possible).                | `{{min(varName, ...)}}`                |
 | mod()         | Calculates the modulo (variable or static values possible).                                   | `{{mod(varName, ...)}}`                |
 | modmin()      | Same as `mod` but defaults to `min` when remainder is 0 (variable or static values possible). | `{{modmin(varName, ..., min)}}`        |
+| floor()       | Rounds down the given value to the nearest integer value.                                     | `{{fllor(varName)}}`                   |
+| ceil()        | Rounds up the given value to the nearest integer value.                                       | `{{ceil(varName)}}`                    |
+| round()       | Rounds the given value to the nearest integer value.                                          | `{{round(varName)}}`                   |
+| fixed()       | Rounds the given float value to the given `decimal` place.                                    | `{{fixed(varName, decimal)}}`          |
 | sha1()        | Calculates the SHA1 sum of the given file.                                                    | `{{sha1(file_path)}}`                  |
 | sha256()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha256(file_path)}}`                |
 | sha512()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha512(file_path)}}`                |
@@ -74,7 +78,10 @@ You can use the following functions for any type of variable or static values:
 | upper()       | Prints the variable's value in upper case.                                                    | `{{upper(varName)}}`                   |
 | cap()         | Prints the first letter of each word of the variable's value in upper case.                   | `{{cap(varName)}}`                     |
 | split()       | Splits the value by `seperator` and print the element at `index`.                             | `{{split(varName, seperator, index)}}` |
-
+| repeat()      | Repeats the given value `amount` times.                                                       | `{{repeat(varName, amount)}}`          |
+| len()         | Either prints the length or the amount of variables (`UNSCOPED_VARS`) of the given value      | `{{len(varName)}}`                     |
+| var()         | Creates a new scoped variable which can be used after the declaration.                        | `{{var(varName, value)}}`              |
+|
 ### Loops
 Looping over multiple variables can be implemented by using the `foreach` syntax.  
 For every iteration you can retrieve the index with `{{index}}` and the value with `{{value}}`.  
@@ -104,6 +111,22 @@ like in this example (`[]` brackets are optional):
 ```
 
 These special variables are currently only supported for the `foreach` loop!
+
+You can also use an integer value for the foreach loop to use it as a for 0 - n loop.  
+The value needs to be either statically typed (`5`) or stored in a variable (`{{iterations}}`).  
+Here is an example (`[]` brackets are optional):  
+```
+# fastplate foreach [ 5 ]
+   Insert your value to repeat here.
+# fastplate foreachend
+
+OR
+
+# fastplate iterations = 5
+# fastplate foreach [ {{iterations}} ]
+   Insert your value to repeat here.
+# fastplate foreachend
+```
 
 ### Example
 1. Import `src/partials/world.txt` (which contains "World!") into the current template.
