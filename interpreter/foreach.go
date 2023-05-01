@@ -1,8 +1,10 @@
 package importer
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -33,10 +35,10 @@ func (i *Interpreter) appendLine(file string, l []byte) {
 }
 
 func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
-	resolve := func(idx int, v variable, file string, out io.Writer) {
+	resolve := func(varIdx, feIdx int, v variable, file string, out io.Writer) {
 		for _, l := range i.state.foreach[file].lines {
 			var mod []byte
-			mod, err = i.resolveForeach(idx, v, file, l)
+			mod, err = i.resolveForeach(varIdx, feIdx, v, file, l)
 			if err != nil {
 				return
 			}
@@ -47,38 +49,67 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 		}
 	}
 
+	vars := i.state.foreach[file].variables
+	if len(vars) == 1 {
+		var iterator int
+		iterator, err = strconv.Atoi(vars[0].name)
+		if err != nil {
+			// The given arg is not an integer, check if variable contains an integer value.
+			iterator, err = strconv.Atoi(i.state.varLookup(file, vars[0].name).value)
+			if err != nil && !strings.HasPrefix(vars[0].name, foreachUnscopedVars) {
+				err = errors.New("foreach: single value provided but does not match integer value")
+				return
+			}
+
+			if iterator > 0 {
+				// Loop should run as for-loop (0 < n).
+				for it := 0; it < iterator; it++ {
+					val := fmt.Sprint(it)
+					resolve(it, it, variable{name: val, value: val}, file, out)
+				}
+				return
+			}
+		}
+	}
+
+	var id int
 	for j, v := range i.state.foreach[file].variables {
+		// Check if loop should iterate over all unscoped vars.
 		if v.name == foreachUnscopedVars {
 			for idx, unscopedVar := range i.state.unscopedVars {
-				resolve(idx, unscopedVar, file, out)
+				resolve(idx, id, unscopedVar, file, out)
+				id++
 			}
 			continue
 		}
 
+		// Check if loop should iterate over specific unscoped var files.
 		varFile := strings.TrimPrefix(v.name, foreachUnscopedVars+"_")
 		if varFile != v.name {
 			idx := i.state.unscopedVarIndexes[strings.ToLower(varFile)]
-			for index, unscopedVar := range i.state.unscopedVars[idx.start : idx.start+idx.len] {
-				resolve(index, unscopedVar, file, out)
+			for vid, unscopedVar := range i.state.unscopedVars[idx.start : idx.start+idx.len] {
+				resolve(idx.start+vid, id, unscopedVar, file, out)
+				id++
 			}
 			continue
 		}
 
-		resolve(j, variable{}, file, out)
+		resolve(j, id, variable{}, file, out)
+		id++
 	}
 	return
 }
 
 // resolveForeach resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolveForeach(index int, v variable, file string, line []byte) (ret []byte, err error) {
+func (i *Interpreter) resolveForeach(varIdx, feIdx int, v variable, file string, line []byte) (ret []byte, err error) {
 	feVars := []variable{
 		{name: foreachValue, value: ""},
-		{name: foreachIndex, value: fmt.Sprint(index)},
+		{name: foreachIndex, value: fmt.Sprint(feIdx)},
 		{name: foreachName, value: v.name},
 	}
-	if index < len(i.state.foreach[file].variables) {
-		feVars[0].value = i.state.varLookup(file, i.state.foreach[file].variables[index].name).value
+	if varIdx < len(i.state.foreach[file].variables) {
+		feVars[0].value = i.state.varLookup(file, i.state.foreach[file].variables[varIdx].name).value
 	}
 	if v != (variable{}) {
 		feVars[0].value = v.value

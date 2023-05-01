@@ -49,9 +49,14 @@ type indexer struct {
 	mx    *sync.Mutex
 }
 
+type scopedRegistry struct {
+	scopedVars map[string][]variable
+	*sync.Mutex
+}
+
 type state struct {
 	ignoreIndex        map[string]int8
-	scopedVars         map[string][]variable
+	scopedRegistry     scopedRegistry
 	dependencies       map[string][]string
 	unscopedVarIndexes map[string]indexer
 	unscopedVars       []variable
@@ -80,8 +85,11 @@ func New(opts *Options) (i Interpreter) {
 		prefixes:   defaultImportPrefixes(),
 		lineEnding: []byte("\n"),
 		state: state{
-			ignoreIndex:        map[string]int8{},
-			scopedVars:         map[string][]variable{},
+			ignoreIndex: map[string]int8{},
+			scopedRegistry: scopedRegistry{
+				scopedVars: map[string][]variable{},
+				Mutex:      &sync.Mutex{},
+			},
 			dependencies:       map[string][]string{},
 			unscopedVarIndexes: map[string]indexer{},
 			foreach:            map[string]foreach{},

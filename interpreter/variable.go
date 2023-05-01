@@ -49,7 +49,10 @@ func (i *Interpreter) variable(args [][]byte) (v variable) {
 
 // setScopedVar parses and sets a scoped variable from the given args.
 func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
-	i.state.scopedVars[scope] = append(i.state.scopedVars[scope], i.variable(args))
+	i.state.scopedRegistry.Lock()
+	defer i.state.scopedRegistry.Unlock()
+
+	i.state.scopedRegistry.scopedVars[scope] = append(i.state.scopedRegistry.scopedVars[scope], i.variable(args))
 }
 
 // setUnscopedVar parses and sets an unscoped variable from the given args.
@@ -142,7 +145,7 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 				values[j] = []byte(lookupVars[j].value)
 			}
 			var mod []byte
-			mod, err = i.executeFunction(string(fncName), values)
+			mod, err = i.executeFunction(string(fncName), values, fileName)
 			if err != nil {
 				return
 			}
