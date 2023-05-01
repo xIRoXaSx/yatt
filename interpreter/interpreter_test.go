@@ -114,14 +114,14 @@ func BenchmarkFileInterpretation(b *testing.B) {
 			},
 			unscopedVars: []variable{},
 			dependencies: map[string][]string{},
+			buf:          &bytes.Buffer{},
 			Mutex:        &sync.Mutex{},
 		},
 	}
-	buf := bytes.Buffer{}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r.NoError(b, ip.interpretFile(filepath.Join("testdata", "src", "rootfile.yaml"), nil, &buf))
+		r.NoError(b, ip.interpretFile(filepath.Join("testdata", "src", "rootfile.yaml"), nil))
 	}
 }
 

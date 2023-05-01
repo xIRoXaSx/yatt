@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,7 +60,9 @@ type state struct {
 	unscopedVarIndexes map[string]indexer
 	unscopedVars       []variable
 	foreach            map[string]foreach
+	ifStatements       map[string]ifStatements
 	dirMode            bool
+	buf                *bytes.Buffer
 	*sync.Mutex
 }
 
@@ -73,6 +74,21 @@ type variable struct {
 type foreach struct {
 	variables []variable
 	lines     [][]byte
+}
+
+type stmnt uint
+
+const (
+	IF stmnt = iota
+	ELSE
+)
+
+type ifStatements struct {
+	active     bool
+	resPointer stmnt
+	res        stmnt
+	ifLines    [][]byte
+	elseLines  [][]byte
 }
 
 func defaultImportPrefixes() []string {
@@ -93,6 +109,8 @@ func New(opts *Options) (i Interpreter) {
 			dependencies:       map[string][]string{},
 			unscopedVarIndexes: map[string]indexer{},
 			foreach:            map[string]foreach{},
+			ifStatements:       map[string]ifStatements{},
+			buf:                &bytes.Buffer{},
 			Mutex:              &sync.Mutex{},
 		},
 	}
@@ -193,8 +211,7 @@ func (i *Interpreter) runDirMode() (err error) {
 		}
 
 		// Write to the buffer to ensure that files don't get partially written.
-		buf := &bytes.Buffer{}
-		err = i.interpretFile(inPath, nil, buf)
+		err = i.interpretFile(inPath, nil)
 		if err != nil {
 			return err
 		}
@@ -210,7 +227,7 @@ func (i *Interpreter) runDirMode() (err error) {
 		}()
 
 		// Write buffer to the file and cut last new line.
-		_, err = out.Write(buf.Bytes()[:buf.Len()-1])
+		_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
 		return err
 	})
 	return
@@ -230,18 +247,17 @@ func (i *Interpreter) runFileMode() (err error) {
 	}()
 
 	// Write to the buffer to ensure that files don't get partially written.
-	buf := &bytes.Buffer{}
-	err = i.interpretFile(i.opts.InPath, nil, buf)
+	err = i.interpretFile(i.opts.InPath, nil)
 	if err != nil {
 		return
 	}
 
 	// Write buffer to the file and cut last new line.
-	_, err = out.Write(buf.Bytes()[:buf.Len()-1])
+	_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
 	return
 }
 
-func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Writer) (err error) {
+func (i *Interpreter) interpretFile(filePath string, indent []byte) (err error) {
 	cont, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Warn().Err(err).Str("file", filePath).Msg("unable to read file")
@@ -270,9 +286,14 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 				// Still in an ignore block.
 				continue
 			}
+			if i.state.ifStatements[filePath].active {
+				// Currently moving inside an if statement.
+				i.appendIfStatementLine(filePath, l)
+				continue
+			}
 			if len(i.state.foreach[filePath].variables) > 0 {
 				// Currently moving inside a foreach loop.
-				i.appendLine(filePath, l)
+				i.appendForeachLine(filePath, l)
 				continue
 			}
 
@@ -281,7 +302,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 			if err != nil {
 				return
 			}
-			_, err = out.Write(append(ret, cutSet...))
+			_, err = i.state.buf.Write(append(ret, cutSet...))
 			if err != nil {
 				return
 			}
@@ -290,7 +311,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 			statement := i.TrimLine(linePart, prefix)
 			split := bytes.Split(statement, []byte{' '})
 			if len(split) > 0 && string(split[0]) != commandImport {
-				err = i.executeCommand(string(split[0]), filePath, split[1:], out)
+				err = i.executeCommand(string(split[0]), filePath, split[1:])
 				if err != nil {
 					return
 				}
@@ -301,14 +322,14 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 				err = errors.New("no import path given")
 				return
 			}
-			stmnt := filepath.Clean(string(split[1]))
+			s := filepath.Clean(string(split[1]))
 			filePath = filepath.Clean(filePath)
-			if i.state.hasCyclicDependency(filePath, stmnt) {
-				err = fmt.Errorf("detected import cycle: %s -> %s", filePath, stmnt)
+			if i.state.hasCyclicDependency(filePath, s) {
+				err = fmt.Errorf("detected import cycle: %s -> %s", filePath, s)
 				return
 			}
-			i.state.addDependency(filePath, stmnt)
-			err = i.interpretFile(stmnt, indent, out)
+			i.state.addDependency(filePath, s)
+			err = i.interpretFile(s, indent)
 			if err != nil {
 				return err
 			}

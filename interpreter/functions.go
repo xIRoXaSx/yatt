@@ -356,7 +356,6 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 2 args expected", function)
 			return
 		}
-
 		i.setScopedVar(fileName, [][]byte{args[0], []byte("="), args[1]})
 	}
 	return

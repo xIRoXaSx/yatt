@@ -3,7 +3,6 @@ package importer
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 )
@@ -25,7 +24,7 @@ func (i *Interpreter) setForeachVar(file string, name string) {
 	i.state.foreach[file] = fe
 }
 
-func (i *Interpreter) appendLine(file string, l []byte) {
+func (i *Interpreter) appendForeachLine(file string, l []byte) {
 	i.state.Lock()
 	defer i.state.Unlock()
 
@@ -34,15 +33,15 @@ func (i *Interpreter) appendLine(file string, l []byte) {
 	i.state.foreach[file] = fe
 }
 
-func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
-	resolve := func(varIdx, feIdx int, v variable, file string, out io.Writer) {
+func (i *Interpreter) evaluateForeach(file string) (err error) {
+	resolve := func(varIdx, feIdx int, v variable, file string) {
 		for _, l := range i.state.foreach[file].lines {
 			var mod []byte
 			mod, err = i.resolveForeach(varIdx, feIdx, v, file, l)
 			if err != nil {
 				return
 			}
-			_, err = out.Write(append(mod, i.lineEnding...))
+			_, err = i.state.buf.Write(append(mod, i.lineEnding...))
 			if err != nil {
 				return
 			}
@@ -65,7 +64,7 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 				// Loop should run as for-loop (0 < n).
 				for it := 0; it < iterator; it++ {
 					val := fmt.Sprint(it)
-					resolve(it, it, variable{name: val, value: val}, file, out)
+					resolve(it, it, variable{name: val, value: val}, file)
 				}
 				return
 			}
@@ -77,7 +76,7 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 		// Check if loop should iterate over all unscoped vars.
 		if v.name == foreachUnscopedVars {
 			for idx, unscopedVar := range i.state.unscopedVars {
-				resolve(idx, id, unscopedVar, file, out)
+				resolve(idx, id, unscopedVar, file)
 				id++
 			}
 			continue
@@ -88,13 +87,13 @@ func (i *Interpreter) evaluateForeach(file string, out io.Writer) (err error) {
 		if varFile != v.name {
 			idx := i.state.unscopedVarIndexes[strings.ToLower(varFile)]
 			for vid, unscopedVar := range i.state.unscopedVars[idx.start : idx.start+idx.len] {
-				resolve(idx.start+vid, id, unscopedVar, file, out)
+				resolve(idx.start+vid, id, unscopedVar, file)
 				id++
 			}
 			continue
 		}
 
-		resolve(j, id, variable{}, file, out)
+		resolve(j, id, variable{}, file)
 		id++
 	}
 	return
