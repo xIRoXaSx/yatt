@@ -69,11 +69,11 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
 		}
-
 		for j := range floats {
 			sum += floats[j]
 		}
@@ -88,11 +88,11 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
 		}
-
 		sum = floats[0]
 		for _, f := range floats[1:] {
 			sum -= f
@@ -108,11 +108,11 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
 		}
-
 		sum = floats[0]
 		for _, f := range floats[1:] {
 			sum *= f
@@ -128,11 +128,11 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
 		}
-
 		sum = floats[0]
 		for _, f := range floats[1:] {
 			sum /= f
@@ -145,11 +145,11 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
 		}
-
 		max := floats[0]
 		for _, f := range floats[1:] {
 			max = math.Max(max, f)
@@ -162,11 +162,11 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: at least 2 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
 		}
-
 		min := floats[0]
 		for _, f := range floats[1:] {
 			min = math.Min(min, f)
@@ -179,6 +179,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 2 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
@@ -191,6 +192,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 3 args expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
@@ -204,6 +206,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
@@ -216,6 +219,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
@@ -228,6 +232,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 1 arg expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
@@ -240,6 +245,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 2 arg expected", function)
 			return
 		}
+
 		floats, err = parseFloats(args)
 		if err != nil {
 			return
@@ -302,10 +308,12 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 		if err != nil {
 			return nil, err
 		}
-		sep := bytes.TrimSpace(args[1])
-		sep = bytes.TrimLeft(sep, "\"'")
-		sep = bytes.TrimRight(sep, "\"'")
-		ret = bytes.Split(args[0], sep)[ind]
+		sep := trimQuotes(args[1])
+		split := bytes.Split(args[0], sep)
+		if len(split) < ind {
+			return
+		}
+		ret = split[ind]
 
 	case functionRepeat:
 		if len(args) != 2 {
@@ -313,16 +321,13 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			return
 		}
 
-		var mult int
-		mult, err = strconv.Atoi(string(args[1]))
+		var factor int
+		factor, err = strconv.Atoi(string(args[1]))
 		if err != nil {
 			return nil, err
 		}
-
-		text := bytes.TrimSpace(args[0])
-		text = bytes.TrimLeft(text, "\"'")
-		text = bytes.TrimRight(text, "\"'")
-		ret = bytes.Repeat(text, mult)
+		text := trimQuotes(args[0])
+		ret = bytes.Repeat(text, factor)
 
 	case functionLength:
 		if len(args) != 1 {
@@ -330,22 +335,25 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			return
 		}
 
-		l := 0
-		if bytes.HasPrefix(args[0], []byte(foreachUnscopedVars)) {
-			varFile := strings.TrimPrefix(string(args[0]), foreachUnscopedVars+"_")
+		var (
+			l    int
+			arg0 = args[0]
+		)
+		if bytes.HasPrefix(arg0, []byte(foreachUnscopedVars)) {
+			varFile := strings.TrimPrefix(string(arg0), foreachUnscopedVars+"_")
 			if varFile == foreachUnscopedVars {
 				l = len(i.state.unscopedVars)
 			} else {
 				l = i.state.unscopedVarIndexes[strings.ToLower(varFile)].len
 			}
 		} else {
-			l = len(args[0])
+			l = len(arg0)
 		}
 		ret = []byte(fmt.Sprint(l))
 
 	case functionVar:
 		if len(args) != 2 {
-			err = fmt.Errorf("%s: exactly 2 arg expected", function)
+			err = fmt.Errorf("%s: exactly 2 args expected", function)
 			return
 		}
 
@@ -376,5 +384,17 @@ func encodeHashToHex(h hash.Hash, file string) (sum []byte, err error) {
 	s := h.Sum(nil)
 	sum = make([]byte, hex.EncodedLen(len(s)))
 	hex.Encode(sum, s)
+	return
+}
+
+// trimQuotes trims spaces, prefix and suffix separately to allow symbol escaping.
+func trimQuotes(val []byte) (ret []byte) {
+	sq := []byte("'")
+	dq := []byte("\"")
+	ret = bytes.TrimSpace(val)
+	ret = bytes.TrimPrefix(ret, dq)
+	ret = bytes.TrimPrefix(ret, sq)
+	ret = bytes.TrimSuffix(ret, dq)
+	ret = bytes.TrimSuffix(ret, sq)
 	return
 }
