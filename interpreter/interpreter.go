@@ -272,11 +272,13 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte) (err error) 
 	}
 
 	lines := bytes.Split(cont, cutSet)
-	for _, l := range lines {
+	for lineNum, l := range lines {
+		lineNum++
 		if i.opts.Indent {
 			indent = leadingIndents(l)
 		}
 
+		callID := fmt.Sprintf("%s:%d", filePath, lineNum)
 		// Skip the indents.
 		linePart := l[len(indent):]
 		prefix := i.matchedImportPrefix(linePart)
@@ -311,7 +313,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte) (err error) 
 			statement := i.TrimLine(linePart, prefix)
 			split := bytes.Split(statement, []byte{' '})
 			if len(split) > 0 && string(split[0]) != commandImport {
-				err = i.executeCommand(string(split[0]), filePath, split[1:])
+				err = i.executeCommand(string(split[0]), filePath, split[1:], callID)
 				if err != nil {
 					return
 				}

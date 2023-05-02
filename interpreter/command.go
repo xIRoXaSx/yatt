@@ -16,7 +16,13 @@ const (
 	commandIfEnd      = "ifend"
 )
 
-func (i *Interpreter) executeCommand(command, file string, args [][]byte) (err error) {
+func (i *Interpreter) executeCommand(command, file string, args [][]byte, callID string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("%v (%s)", err, callID)
+		}
+	}()
+
 	switch command {
 	case commandIgnore:
 		if len(args) != 1 {
@@ -26,7 +32,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte) (err e
 
 	case commandVar:
 		if len(args) < 2 {
-			return fmt.Errorf("command %s: var statement needs a name and value", command)
+			return fmt.Errorf("command %s: expected a name and a value", command)
 		}
 		i.setScopedVar(file, args)
 
