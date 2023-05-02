@@ -66,7 +66,7 @@ You can use the following functions for any type of variable or static values:
 | min()         | Chooses the minimum of the given numbers (variable or static values possible).                | `{{min(varName, ...)}}`                |
 | mod()         | Calculates the modulo (variable or static values possible).                                   | `{{mod(varName, ...)}}`                |
 | modmin()      | Same as `mod` but defaults to `min` when remainder is 0 (variable or static values possible). | `{{modmin(varName, ..., min)}}`        |
-| floor()       | Rounds down the given value to the nearest integer value.                                     | `{{fllor(varName)}}`                   |
+| floor()       | Rounds down the given value to the nearest integer value.                                     | `{{floor(varName)}}`                   |
 | ceil()        | Rounds up the given value to the nearest integer value.                                       | `{{ceil(varName)}}`                    |
 | round()       | Rounds the given value to the nearest integer value.                                          | `{{round(varName)}}`                   |
 | fixed()       | Rounds the given float value to the given `decimal` place.                                    | `{{fixed(varName, decimal)}}`          |
@@ -79,6 +79,7 @@ You can use the following functions for any type of variable or static values:
 | cap()         | Prints the first letter of each word of the variable's value in upper case.                   | `{{cap(varName)}}`                     |
 | split()       | Splits the value by `seperator` and print the element at `index`.                             | `{{split(varName, seperator, index)}}` |
 | repeat()      | Repeats the given value `amount` times.                                                       | `{{repeat(varName, amount)}}`          |
+| replace()     | Replaces `old` in the given value `value` with `new`.                                         | `{{replace(value, old, new)}}`         |
 | len()         | Either prints the length or the amount of variables (`UNSCOPED_VARS`) of the given value      | `{{len(varName)}}`                     |
 | var()         | Creates a new scoped variable which can be used after the declaration.                        | `{{var(varName, value)}}`              |
 |

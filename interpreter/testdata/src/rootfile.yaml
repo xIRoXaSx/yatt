@@ -25,6 +25,8 @@ ImportExample:
   #   This also allows for template specific documentation.
   # fastplate ignore end
 
+  # fastplate import ./testdata/src/partials/commands.yaml
+
   # Using variables
   # ~-~-~-~-~-~-~-~
   # By declaring scoped / local variables in the syntax down below, you can reuse values in the same template (file).

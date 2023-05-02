@@ -40,6 +40,7 @@ const (
 	functionShaMd5     = "md5"
 	functionSplit      = "split"
 	functionRepeat     = "repeat"
+	functionReplace    = "replace"
 	functionLength     = "len"
 	functionVar        = "var"
 )
@@ -308,8 +309,7 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 		if err != nil {
 			return nil, err
 		}
-		sep := trimQuotes(args[1])
-		split := bytes.Split(args[0], sep)
+		split := bytes.Split(args[0], trimQuotes(args[1]))
 		if len(split) < ind {
 			return
 		}
@@ -326,8 +326,18 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 		if err != nil {
 			return nil, err
 		}
-		text := trimQuotes(args[0])
-		ret = bytes.Repeat(text, factor)
+		ret = bytes.Repeat(trimQuotes(args[0]), factor)
+
+	case functionReplace:
+		if len(args) != 3 {
+			err = fmt.Errorf("%s: exactly 3 args expected", function)
+			return
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		ret = bytes.ReplaceAll(trimQuotes(args[0]), trimQuotes(args[1]), trimQuotes(args[2]))
 
 	case functionLength:
 		if len(args) != 1 {

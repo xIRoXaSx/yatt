@@ -26,6 +26,7 @@ Examples: |
   Cap:               {{cap(var3)}}
   Split:             {{split(var4, ' = ' , 2)}}
   Repeat:            {{repeat("hello there! ", 5)}}
+  Replace:           {{replace(var4, =, !)}}
   Length:            {{len(12Characters)}} (Count chars)
   Length:            {{len(UNSCOPED_VARS)}} (Count all unscoped variables)
   Length:            {{len(UNSCOPED_VARS_FASTPLATE)}} (Count all unscoped variables of fastplate.var)

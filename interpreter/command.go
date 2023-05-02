@@ -62,10 +62,6 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte) (err e
 		i.state.foreach[file] = foreach{}
 
 	case commandIf:
-		if len(args) != 3 {
-			return fmt.Errorf("command %s: exactly 3 args expected", command)
-		}
-
 		is := i.state.ifStatements[file]
 		setStatementFlag := func(b bool) {
 			if b {
@@ -75,9 +71,20 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte) (err e
 			}
 		}
 
-		arg0 := args[0]
-		op := string(args[1])
-		arg1 := args[2]
+		// Get the first (left) part of the if statement.
+		r, idx := matchUntilSymbol(args, templateStart, templateEnd)
+		arg0 := bytes.Join(r, []byte(""))
+		if idx+1 > len(args) {
+			return fmt.Errorf("command %s: unable to find matching end", command)
+		}
+
+		// Get the operator of the if statement.
+		op, idOp := findSymbols(args[idx+1:], statementOperators())
+		idx += idOp
+
+		// Get the last (right) part of the if statement.
+		r, _ = matchUntilSymbol(args[idx+1:], templateStart, templateEnd)
+		arg1 := bytes.Join(r, []byte(""))
 		arg0, err = i.resolve(file, arg0, nil)
 		if err != nil {
 			return
@@ -86,7 +93,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte) (err e
 		if err != nil {
 			return
 		}
-		switch op {
+		switch string(op) {
 		case "=", "==":
 			setStatementFlag(bytes.Equal(arg0, arg1))
 
@@ -172,4 +179,57 @@ func (i *Interpreter) appendIfStatementLine(file string, b []byte) {
 		is.elseLines = append(i.state.ifStatements[file].elseLines, b)
 	}
 	i.state.ifStatements[file] = is
+}
+
+func matchUntilSymbol(val [][]byte, matchSymbol, untilSymbol []byte) (ret [][]byte, idx int) {
+	var (
+		openCount int
+		b         []byte
+	)
+	idx = -1
+	for idx, b = range val {
+		if len(bytes.TrimSpace(b)) == 0 {
+			continue
+		}
+
+		ret = append(ret, b)
+		openCount += bytes.Count(b, matchSymbol)
+		openCount -= bytes.Count(b, untilSymbol)
+		if openCount == 0 {
+			return
+		}
+	}
+	return
+}
+
+func findSymbols(val [][]byte, afterSymbols [][]byte) (ret []byte, idx int) {
+	var b []byte
+	idx = -1
+	for idx, b = range val {
+		v := bytes.TrimSpace(b)
+		if len(v) == 0 {
+			continue
+		}
+		for _, sym := range afterSymbols {
+			if bytes.Equal(v, sym) {
+				idx++
+				ret = b
+				return
+			}
+		}
+	}
+	return
+}
+
+func statementOperators() [][]byte {
+	return [][]byte{
+		[]byte("=="),
+		[]byte("="),
+		[]byte("!="),
+		[]byte("<>"),
+		[]byte(">="),
+		[]byte(">"),
+		[]byte("<="),
+		[]byte("<"),
+	}
 }
