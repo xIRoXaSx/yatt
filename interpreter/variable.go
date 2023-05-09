@@ -52,6 +52,12 @@ func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
 	i.state.scopedRegistry.Lock()
 	defer i.state.scopedRegistry.Unlock()
 
+	for j, sv := range i.state.scopedRegistry.scopedVars[scope] {
+		if sv.name == string(args[0]) {
+			i.state.scopedRegistry.scopedVars[scope][j] = i.variable(args)
+			break
+		}
+	}
 	i.state.scopedRegistry.scopedVars[scope] = append(i.state.scopedRegistry.scopedVars[scope], i.variable(args))
 }
 
@@ -131,6 +137,7 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 				continue
 			}
 
+			fncNameStr := string(fncName)
 			values := make([][]byte, len(lookupVars))
 		lv:
 			for j := range lookupVars {
@@ -142,10 +149,14 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 						continue lv
 					}
 				}
-				values[j] = []byte(lookupVars[j].value)
+				if fncNameStr == "var" {
+					values[j] = []byte(lookupVars[j].name)
+				} else {
+					values[j] = []byte(lookupVars[j].value)
+				}
 			}
 			var mod []byte
-			mod, err = i.executeFunction(string(fncName), values, fileName)
+			mod, err = i.executeFunction(fncNameStr, values, fileName, additionalVars)
 			if err != nil {
 				return
 			}

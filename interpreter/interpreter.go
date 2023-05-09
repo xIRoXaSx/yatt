@@ -59,7 +59,7 @@ type state struct {
 	dependencies       map[string][]string
 	unscopedVarIndexes map[string]indexer
 	unscopedVars       []variable
-	foreach            map[string]foreach
+	foreach            sync.Map
 	ifStatements       map[string]ifStatements
 	dirMode            bool
 	buf                *bytes.Buffer
@@ -69,11 +69,6 @@ type state struct {
 type variable struct {
 	name  string
 	value string
-}
-
-type foreach struct {
-	variables []variable
-	lines     [][]byte
 }
 
 type stmnt uint
@@ -108,7 +103,7 @@ func New(opts *Options) (i Interpreter) {
 			},
 			dependencies:       map[string][]string{},
 			unscopedVarIndexes: map[string]indexer{},
-			foreach:            map[string]foreach{},
+			foreach:            sync.Map{},
 			ifStatements:       map[string]ifStatements{},
 			buf:                &bytes.Buffer{},
 			Mutex:              &sync.Mutex{},
@@ -148,7 +143,6 @@ func New(opts *Options) (i Interpreter) {
 			i.setUnscopedVar(strings.TrimSuffix(filepath.Base(vf), filepath.Ext(vf)), split[1:])
 		}
 	}
-
 	return
 }
 
@@ -257,10 +251,10 @@ func (i *Interpreter) runFileMode() (err error) {
 	return
 }
 
-func (i *Interpreter) interpretFile(filePath string, indent []byte) (err error) {
-	cont, err := os.ReadFile(filePath)
+func (i *Interpreter) interpretFile(file string, indent []byte) (err error) {
+	cont, err := os.ReadFile(file)
 	if err != nil {
-		log.Warn().Err(err).Str("file", filePath).Msg("unable to read file")
+		log.Warn().Err(err).Str("file", file).Msg("unable to read file")
 		return
 	}
 
@@ -278,29 +272,39 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte) (err error) 
 			indent = leadingIndents(l)
 		}
 
-		callID := fmt.Sprintf("%s:%d", filePath, lineNum)
+		callID := fmt.Sprintf("%s:%d", file, lineNum)
 		// Skip the indents.
 		linePart := l[len(indent):]
 		prefix := i.matchedImportPrefix(linePart)
 		if prefix == nil {
 			// Line does not contain one of the required prefixes.
-			if i.state.ignoreIndex[filePath] == 1 {
+			if i.state.ignoreIndex[file] == 1 {
 				// Still in an ignore block.
 				continue
 			}
-			if i.state.ifStatements[filePath].active {
+			if i.state.ifStatements[file].active {
 				// Currently moving inside an if statement.
-				i.appendIfStatementLine(filePath, l)
+				i.appendIfStatementLine(file, l)
 				continue
 			}
-			if len(i.state.foreach[filePath].variables) > 0 {
+
+			var fe foreach
+			fe, err = i.state.foreachLoad(file)
+			if err != nil && err != errMapLoad {
+				return
+			}
+
+			if err == nil && fe.buf.v != nil && fe.c.p >= 0 && len(fe.buf.v[fe.c.p].variables) > 0 {
 				// Currently moving inside a foreach loop.
-				i.appendForeachLine(filePath, l)
+				err = i.appendForeachLine(file, l)
+				if err != nil {
+					return
+				}
 				continue
 			}
 
 			var ret []byte
-			ret, err = i.resolve(filePath, l, nil)
+			ret, err = i.resolve(file, l, nil)
 			if err != nil {
 				return
 			}
@@ -313,7 +317,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte) (err error) 
 			statement := i.TrimLine(linePart, prefix)
 			split := bytes.Split(statement, []byte{' '})
 			if len(split) > 0 && string(split[0]) != commandImport {
-				err = i.executeCommand(string(split[0]), filePath, split[1:], callID)
+				err = i.executeCommand(string(split[0]), file, split[1:], lineNum, callID)
 				if err != nil {
 					return
 				}
@@ -325,12 +329,12 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte) (err error) 
 				return
 			}
 			s := filepath.Clean(string(split[1]))
-			filePath = filepath.Clean(filePath)
-			if i.state.hasCyclicDependency(filePath, s) {
-				err = fmt.Errorf("detected import cycle: %s -> %s", filePath, s)
+			file = filepath.Clean(file)
+			if i.state.hasCyclicDependency(file, s) {
+				err = fmt.Errorf("detected import cycle: %s -> %s", file, s)
 				return
 			}
-			i.state.addDependency(filePath, s)
+			i.state.addDependency(file, s)
 			err = i.interpretFile(s, indent)
 			if err != nil {
 				return err

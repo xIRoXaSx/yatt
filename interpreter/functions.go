@@ -45,7 +45,7 @@ const (
 	functionVar        = "var"
 )
 
-func (i *Interpreter) executeFunction(function string, args [][]byte, fileName string) (ret []byte, err error) {
+func (i *Interpreter) executeFunction(function string, args [][]byte, fileName string, additionalVars []variable) (ret []byte, err error) {
 	if len(args) == 0 {
 		err = fmt.Errorf("%v: func statement needs at least one arg", function)
 		return
@@ -366,7 +366,16 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 			err = fmt.Errorf("%s: exactly 2 args expected", function)
 			return
 		}
-		i.setScopedVar(fileName, [][]byte{args[0], []byte("="), args[1]})
+		// Check if any additional variable matches.
+		arg0 := args[0]
+		arg1 := args[1]
+		for _, v := range additionalVars {
+			if string(arg0) == v.name {
+				arg1 = []byte(v.value)
+				break
+			}
+		}
+		i.setScopedVar(fileName, [][]byte{arg0, []byte("="), arg1})
 	}
 	return
 }
