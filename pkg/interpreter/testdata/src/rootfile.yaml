@@ -58,6 +58,13 @@ ImportExample:
   # fastplate var var2 = var 2
   # fastplate var var3 = var 3
   # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
-    Hello from index {{index}} with value {{value}}
+    {{var(outer, index)}}
+    # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+      {{var(inner1, index)}}
+      # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+        Hello from index {{index}} with value {{value}}{{var(inner2, index)}}
+        {{outer}} => {{inner1}} => {{inner2}} == {{index}}
+      # fastplate foreachend
+    # fastplate foreachend
   # fastplate foreachend
 # End of file.

@@ -36,13 +36,16 @@ You can pass the listed arguments / options down below.
 The syntax for various interpretations are shown in the table down below.  
 The prefix `# fastplate` is always needed for fastplate's  interpretations and can also be used in form of `#fastplate`.  
 
-| Syntax                  | Description                                                                                                        |
-|-------------------------|--------------------------------------------------------------------------------------------------------------------|
-| import {FilePath}       | Import a file into the current template / partial. Paths are always relational to the working dir.                 |
-| var {Name} = {Value}    | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                                            |
-| ignore {start / end}    | Starts / ends a ignore block. Lines between these declarations will not be written to the output file.             |
-| foreach [{{var1}}, ...] | Loops over each variable until it hits `foreachend`. Use `{{value}}` and `{{index}}` respectively inside the loop. |
-| foreachend              | Signals the end of the foreach loop.                                                                               |
+| Syntax                        | Description                                                                                                        |
+|-------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| import {FilePath}             | Import a file into the current template / partial. Paths are always relational to the working dir.                 |
+| var {Name} = {Value}          | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                                            |
+| ignore {start / end}          | Starts / ends a ignore block. Lines between these declarations will not be written to the output file.             |
+| foreach [{{var1}}, ...]       | Loops over each variable until it hits `foreachend`. Use `{{value}}` and `{{index}}` respectively inside the loop. |
+| foreachend                    | Signals the end of the foreach loop.                                                                               |
+| if {value} {operator} {value} | A common if statement. Operators are `==` (or `=`), `!=` (or `<>`), `>`, `>=`, `<`, `<=`.                          |
+| else                          | A common else statement. Only works in combination with an `if` statement.                                         |
+| ifend                         | Signals the end of the if statement.                                                                               |
 
 ### Variables
 Import variables can be declared and used from inside the template / partial file (= scoped / local) or 
@@ -82,11 +85,11 @@ You can use the following functions for any type of variable or static values:
 | replace()     | Replaces `old` in the given value `value` with `new`.                                         | `{{replace(value, old, new)}}`         |
 | len()         | Either prints the length or the amount of variables (`UNSCOPED_VARS`) of the given value      | `{{len(varName)}}`                     |
 | var()         | Creates a new scoped variable which can be used after the declaration.                        | `{{var(varName, value)}}`              |
-|
+
 ### Loops
 Looping over multiple variables can be implemented by using the `foreach` syntax.  
 For every iteration you can retrieve the index with `{{index}}` and the value with `{{value}}`.  
-By declaring single variables (no matter if scoped or unscoped), you can loop over selected ones like so (`[]` brackets are optional):  
+By declaring variables (no matter if scoped or unscoped), you can loop over selected ones like so (`[]` brackets are optional):  
 ```
 # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
    Insert your value to repeat here.
@@ -127,6 +130,19 @@ OR
 # fastplate foreach [ {{iterations}} ]
    Insert your value to repeat here.
 # fastplate foreachend
+```
+
+TIP:
+For nested loops, you can also use the `var` function to create a dynamic scoped variable.  
+This way you are able to use the outer `index`, `value` and `name` variables inside a child loop.  
+Here is an example (`[]` brackets are optional):
+```
+# fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+   {{var(outerIndex, index)}}
+   # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+      Outer index: {{outerIndex}}, inner index: {{index}}
+   # fastplate foreachend 
+# fastplate foreachend 
 ```
 
 ### Example
@@ -237,4 +253,20 @@ Shopping list:
   2x apples
   2x ORANGES
   2x Bananas
+```
+
+7. Use if-else statements:
+```text
+  # fastplate var item = apple
+  # fastplate var other = oranges
+  # fastplate var another = bananas
+  # fastplate if {{len(item)}} > {{len(other)}}
+    {{other}} is shorter!
+  # fastplate else
+    # fastplate if {{len(other)}} > {{len(another)}}
+      {{another}} is shorter!
+    # fastplate else
+      {{other}} is shorter!
+    # fastplate ifend
+  # fastplate ifend
 ```
