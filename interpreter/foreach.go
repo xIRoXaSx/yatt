@@ -60,9 +60,22 @@ func (i *Interpreter) appendForeachLine(file string, l []byte) (err error) {
 }
 
 func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
+	newBufferedLoop := func(fe foreach, file string) {
+		fe.buf.mv(1)
+		err = i.evaluateForeach(fe, file)
+		if err != nil {
+			return
+		}
+		fe.buf.mv(-1)
+	}
+
 	loopLines := func(varIdx, feIdx int, v variable, buf foreachBuffer) (err error) {
 		// Loops may be nested directly inside each other.
 		// If this happens and no other lines have been given, the line's length is 0.
+		if buf.lines == nil && len(buf.startNext) == 1 {
+			newBufferedLoop(fe, file)
+			return
+		}
 		modified := len(buf.lines[0]) == 0
 		for lineNum, l := range buf.lines {
 			// Only resolve foreach loop and write it to the buffer if line isn't empty.
@@ -81,12 +94,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 
 			for _, next := range buf.startNext {
 				if (!modified && lineNum+1 == next) || (modified && lineNum == next) {
-					fe.buf.mv(1)
-					err = i.evaluateForeach(fe, file)
-					if err != nil {
-						return
-					}
-					fe.buf.mv(-1)
+					newBufferedLoop(fe, file)
 					break
 				}
 			}
