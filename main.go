@@ -10,7 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/fastplate/pkg/interpreter"
+	"github.com/xiroxasx/fastplate/internal/interpreter"
 )
 
 func parseFlags() (a interpreter.Options) {

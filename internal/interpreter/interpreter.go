@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 const varFileName = "fastplate.var"
@@ -49,7 +50,7 @@ type indexer struct {
 }
 
 type scopedRegistry struct {
-	scopedVars map[string][]variable
+	scopedVars map[string][]common.Var
 	*sync.Mutex
 }
 
@@ -58,17 +59,14 @@ type state struct {
 	scopedRegistry     scopedRegistry
 	dependencies       map[string][]string
 	unscopedVarIndexes map[string]indexer
-	unscopedVars       []variable
-	foreach            sync.Map
-	ifStatements       map[string]ifStatements
-	dirMode            bool
-	buf                *bytes.Buffer
+	//unscopedVars       []variable
+	unscopedVars []common.Var
+	foreach      sync.Map
+	statements   sync.Map
+	ifStatements map[string]ifStatements
+	dirMode      bool
+	buf          *bytes.Buffer
 	*sync.Mutex
-}
-
-type variable struct {
-	name  string
-	value string
 }
 
 type stmnt uint
@@ -87,7 +85,7 @@ type ifStatements struct {
 }
 
 func defaultImportPrefixes() []string {
-	return []string{"#fastplate", "# fastplate"}
+	return []string{"#fastplate", "# fastplate", "//fastplate", "// fastplate"}
 }
 
 func New(opts *Options) (i Interpreter) {
@@ -98,7 +96,7 @@ func New(opts *Options) (i Interpreter) {
 		state: state{
 			ignoreIndex: map[string]int8{},
 			scopedRegistry: scopedRegistry{
-				scopedVars: map[string][]variable{},
+				scopedVars: map[string][]common.Var{},
 				Mutex:      &sync.Mutex{},
 			},
 			dependencies:       map[string][]string{},

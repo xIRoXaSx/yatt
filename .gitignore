@@ -1,3 +1,4 @@
+/.vscode/
 /.idea/
 /bin/
-/pkg/interpreter/testdata/dest
+/internal/interpreter/testdata/dest

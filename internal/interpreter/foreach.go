@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 const (
@@ -69,7 +71,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		fe.buf.mv(-1)
 	}
 
-	loopLines := func(varIdx, feIdx int, v variable, buf foreachBuffer) (err error) {
+	loopLines := func(varIdx, feIdx int, v common.Var, buf foreachBuffer) (err error) {
 		// Loops may be nested directly inside each other.
 		// If this happens and no other lines have been given, the line's length is 0.
 		if buf.lines == nil && len(buf.startNext) == 1 {
@@ -117,7 +119,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		iterator, err = strconv.Atoi(var0.name)
 		if err != nil {
 			// The given arg is not an integer, check if variable holds an integer value.
-			iterator, err = strconv.Atoi(i.state.varLookup(file, var0.name).value)
+			iterator, err = strconv.Atoi(i.state.varLookup(file, var0.name).Value())
 			if err != nil && !strings.HasPrefix(var0.name, foreachUnscopedVars) {
 				err = errors.New("foreach: single value provided but does not match integer value")
 				return
@@ -173,11 +175,11 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 
 // resolveForeach resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolveForeach(varIdx, feIdx int, v variable, file string, line []byte) (ret []byte, err error) {
-	feVars := []variable{
-		{name: foreachValue, value: ""},
-		{name: foreachIndex, value: fmt.Sprint(feIdx)},
-		{name: foreachName, value: v.name},
+func (i *Interpreter) resolveForeach(varIdx, feIdx int, v common.Var, file string, line []byte) (ret []byte, err error) {
+	feVars := []common.Var{
+		common.NewVar(foreachValue, ""),
+		common.NewVar(foreachIndex, fmt.Sprint(feIdx)),
+		common.NewVar(foreachName, v.Name()),
 	}
 
 	fe, err := i.state.foreachLoad(file)
@@ -185,12 +187,13 @@ func (i *Interpreter) resolveForeach(varIdx, feIdx int, v variable, file string,
 		return
 	}
 
+	first := feVars[0]
 	feState := fe.buf.load()
 	if varIdx < len(feState.variables) {
-		feVars[0].value = i.state.varLookup(fmt.Sprintf("%s_%d", file, feIdx), feState.variables[varIdx].name).value
+		feVars[0] = common.NewVar(first.Name(), i.state.varLookup(file, feState.variables[varIdx].name).Value())
 	}
-	if v != (variable{}) {
-		feVars[0].value = v.value
+	if v.Value() != "" {
+		feVars[0] = common.NewVar(first.Name(), v.Value())
 	}
 	ret, err = i.resolve(file, line, feVars)
 	return

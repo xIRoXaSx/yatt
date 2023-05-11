@@ -3,30 +3,32 @@ package interpreter
 import (
 	"errors"
 	"fmt"
+
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 var errMapLoad = errors.New("unable to load foreach map values")
 
-func (s *state) varLookup(file, name string) (v variable) {
+func (s *state) varLookup(file, name string) (v common.Var) {
 	v = s.lookupScoped(file, name)
-	if v.name == "" {
+	if v.Name() == "" {
 		v = s.lookupUnscoped(name)
 	}
 	return
 }
 
-func (s *state) lookupUnscoped(name string) variable {
+func (s *state) lookupUnscoped(name string) common.Var {
 	for _, v := range s.unscopedVars {
-		if v.name == name {
+		if v.Name() == name {
 			return v
 		}
 	}
 	return variable{}
 }
 
-func (s *state) lookupScoped(fileName, name string) variable {
+func (s *state) lookupScoped(fileName, name string) common.Var {
 	for _, v := range s.scopedRegistry.scopedVars[fileName] {
-		if v.name == name {
+		if v.Name() == name {
 			return v
 		}
 	}

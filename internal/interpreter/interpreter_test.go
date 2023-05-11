@@ -13,6 +13,7 @@ import (
 	"time"
 
 	r "github.com/stretchr/testify/require"
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 type zipWriter struct {
@@ -109,10 +110,10 @@ func BenchmarkFileInterpretation(b *testing.B) {
 		state: state{
 			ignoreIndex: map[string]int8{},
 			scopedRegistry: scopedRegistry{
-				scopedVars: map[string][]variable{},
+				scopedVars: map[string][]common.Var{},
 				Mutex:      &sync.Mutex{},
 			},
-			unscopedVars: []variable{},
+			unscopedVars: []common.Var{},
 			dependencies: map[string][]string{},
 			buf:          &bytes.Buffer{},
 			Mutex:        &sync.Mutex{},

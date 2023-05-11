@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"sync"
+
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 var (
@@ -11,21 +13,33 @@ var (
 	templateEnd   = []byte("}}")
 )
 
+type variable struct {
+	name  string
+	value string
+}
+
+func (v variable) Name() string {
+	return v.name
+}
+
+func (v variable) Value() string {
+	return v.value
+}
+
 // variable parses a variable name and value and returns it.
-func (i *Interpreter) variable(args [][]byte) (v variable) {
+func (i *Interpreter) variable(args [][]byte) (v common.Var) {
 	i.state.Lock()
 	defer i.state.Unlock()
 
-	v = variable{name: string(args[0])}
+	newVar := variable{name: string(args[0])}
 	val := bytes.SplitN(args[0], []byte{'='}, 2)
 	if len(val) == 1 {
 		// Syntax: x = y, x =y
 		val = bytes.Split(args[1], []byte{'='})
-		v.value = string(val[1])
+		newVar.value = string(val[1])
 	} else {
 		// Syntax: x=y, x= y
-		v.name = string(val[0])
-		v.value = string(val[1])
+		newVar = variable{name: string(val[0]), value: string(val[1])}
 	}
 	if len(args) > 2 {
 		// Skip equal sign.
@@ -42,9 +56,9 @@ func (i *Interpreter) variable(args [][]byte) (v variable) {
 		for j, s := range subArgs {
 			str[j] = string(s)
 		}
-		v.value += strings.Join(str, " ")
+		newVar.value += strings.Join(str, " ")
 	}
-	return
+	return newVar
 }
 
 // setScopedVar parses and sets a scoped variable from the given args.
@@ -53,7 +67,7 @@ func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
 	defer i.state.scopedRegistry.Unlock()
 
 	for j, sv := range i.state.scopedRegistry.scopedVars[scope] {
-		if sv.name == string(args[0]) {
+		if sv.Name() == string(args[0]) {
 			i.state.scopedRegistry.scopedVars[scope][j] = i.variable(args)
 			break
 		}
@@ -64,9 +78,10 @@ func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
 // setUnscopedVar parses and sets an unscoped variable from the given args.
 func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 	for j, uv := range i.state.unscopedVars {
-		if string(v[0]) == uv.name {
+		if string(v[0]) == uv.Name() {
 			// Update existing variable.
-			i.state.unscopedVars[j].value = i.variable(v).value
+			old := i.state.unscopedVars[j]
+			i.state.unscopedVars[j] = common.NewVar(old.Name(), i.variable(v).Value())
 			return
 		}
 	}
@@ -86,7 +101,7 @@ func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 
 // resolve resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []variable) (ret []byte, err error) {
+func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []common.Var) (ret []byte, err error) {
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {
@@ -115,18 +130,18 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 			if len(fncName) == 0 {
 				// No function found, try to lookup and replace variable.
 				v := i.state.varLookup(fileName, string(m))
-				if v.value == "" {
+				if v.Value() == "" {
 					continue
 				}
 
-				ret = replaceVar(m, []byte(v.value))
+				ret = replaceVar(m, []byte(v.Value()))
 				continue
 			}
 
-			lookupVars := make([]variable, 0)
+			lookupVars := make([]common.Var, 0)
 			for j := range vars {
 				v := i.state.varLookup(fileName, string(vars[j]))
-				if v.name == "" {
+				if v.Name() == "" {
 					// For some functions, numbers are also used. Add them.
 					val := string(vars[j])
 					v = variable{name: val, value: val}
@@ -144,15 +159,15 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 				for _, av := range additionalVars {
 					// Overwrite variable value if the names match.
 					// This may be the case for "foreach"-variables.
-					if lookupVars[j].name == av.name {
-						values[j] = []byte(av.value)
+					if lookupVars[j].Name() == av.Name() {
+						values[j] = []byte(av.Value())
 						continue lv
 					}
 				}
 				if fncNameStr == "var" {
-					values[j] = []byte(lookupVars[j].name)
+					values[j] = []byte(lookupVars[j].Name())
 				} else {
-					values[j] = []byte(lookupVars[j].value)
+					values[j] = []byte(lookupVars[j].Value())
 				}
 			}
 			var mod []byte
@@ -172,7 +187,7 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []var
 	}
 
 	for _, v := range additionalVars {
-		ret = replaceVar([]byte(v.name), []byte(v.value))
+		ret = replaceVar([]byte(v.Name()), []byte(v.Value()))
 	}
 	return
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
+
+	"github.com/xiroxasx/fastplate/internal/interpreter/functions"
 )
 
 const (
@@ -170,7 +172,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 
 		case ">":
 			var floats []float64
-			floats, err = parseFloats([][]byte{arg0, arg1})
+			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
 			if err != nil {
 				return
 			}
@@ -178,7 +180,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 
 		case ">=":
 			var floats []float64
-			floats, err = parseFloats([][]byte{arg0, arg1})
+			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
 			if err != nil {
 				return
 			}
@@ -186,7 +188,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 
 		case "<":
 			var floats []float64
-			floats, err = parseFloats([][]byte{arg0, arg1})
+			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
 			if err != nil {
 				return
 			}
@@ -194,7 +196,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 
 		case "<=":
 			var floats []float64
-			floats, err = parseFloats([][]byte{arg0, arg1})
+			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
 			if err != nil {
 				return
 			}
