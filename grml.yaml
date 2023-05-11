@@ -60,8 +60,15 @@ commands:
     build:
         help: build the project locally
         exec: |
-            CGO_ENABLED=0 go build -o="${BIN_NAME}-v${VERSION}" .
+            mkdir -p bin
+            CGO_ENABLED=0 go build -o="bin/${BIN_NAME}-v${VERSION}" .
         commands:
+            run:
+                help: run the binary
+                deps:
+                    - build
+                    - run
+
             docker:
                 help: build the docker image
                 exec: |
@@ -72,3 +79,13 @@ commands:
                 help: build via docker multi arch container
                 exec: |
                     run_docker_multi_arch_build
+
+    run:
+        help: run the binary with the testdata as input
+        exec: |
+            cd internal/interpreter
+            ${ROOT}/bin/${BIN_NAME}-v${VERSION} \
+                -in="testdata/src/rootfile.yaml" \
+                -out="testdata/dest/rootfile.yaml" \
+                -var="testdata/fastplate.var" \
+                -indent
