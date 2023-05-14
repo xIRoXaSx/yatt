@@ -8,11 +8,6 @@ import (
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
-var (
-	templateStart = []byte("{{")
-	templateEnd   = []byte("}}")
-)
-
 type variable struct {
 	name  string
 	value string
@@ -102,6 +97,8 @@ func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 // resolve resolves an import variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
 func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []common.Var) (ret []byte, err error) {
+	templateStart := common.TemplateStart()
+	templateEnd := common.TemplateEnd()
 	ret = line
 	begin := bytes.Split(line, templateStart)
 	if len(begin) == 1 {

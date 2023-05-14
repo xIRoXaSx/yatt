@@ -10,6 +10,14 @@ type Var interface {
 	Value() string
 }
 
+func TemplateStart() []byte {
+	return []byte("{{")
+}
+
+func TemplateEnd() []byte {
+	return []byte("}}")
+}
+
 func (v Variable) Name() string {
 	return v.name
 }

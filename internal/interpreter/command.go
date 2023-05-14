@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/xiroxasx/fastplate/internal/interpreter/functions"
+	"github.com/xiroxasx/fastplate/internal/interpreter/commands"
 )
 
 const (
@@ -48,7 +48,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 		ln := lineNum
 		fe, err = i.state.foreachLoad(file)
 		if err != nil {
-			if err != errMapLoad {
+			if err != errMapLoadForeach {
 				return
 			}
 
@@ -132,174 +132,56 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 		return
 
 	case commandIf:
-		is := i.state.ifStatements[file]
-		setStatementFlag := func(b bool) {
-			if b {
-				is.res = IF
-			} else {
-				is.res = ELSE
-			}
-		}
-
-		// Get the first (left) part of the if statement.
-		r, idx := matchUntilSymbol(args, templateStart, templateEnd)
-		arg0 := bytes.Join(r, []byte(""))
-		if idx+1 > len(args) {
-			return fmt.Errorf("command %s: unable to find matching end", command)
-		}
-
-		// Get the operator of the if statement.
-		op, idOp := findSymbols(args[idx+1:], statementOperators())
-		idx += idOp
-
-		// Get the last (right) part of the if statement.
-		r, _ = matchUntilSymbol(args[idx+1:], templateStart, templateEnd)
-		arg1 := bytes.Join(r, []byte(""))
-		arg0, err = i.resolve(file, arg0, nil)
+		var stm commands.Statements
+		stm, err = i.state.statementLoad(file)
 		if err != nil {
-			return
+			if err != errMapLoadStatements {
+				return
+			}
+			err = nil
+			stm = commands.Statements{}
 		}
-		arg1, err = i.resolve(file, arg1, nil)
-		if err != nil {
-			return
-		}
-		switch string(op) {
-		case "=", "==":
-			setStatementFlag(bytes.Equal(arg0, arg1))
 
-		case "!=", "<>":
-			setStatementFlag(!bytes.Equal(arg0, arg1))
-
-		case ">":
-			var floats []float64
-			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
-			if err != nil {
-				return
-			}
-			setStatementFlag(floats[0] > floats[1])
-
-		case ">=":
-			var floats []float64
-			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
-			if err != nil {
-				return
-			}
-			setStatementFlag(floats[0] >= floats[1])
-
-		case "<":
-			var floats []float64
-			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
-			if err != nil {
-				return
-			}
-			setStatementFlag(floats[0] < floats[1])
-
-		case "<=":
-			var floats []float64
-			floats, err = functions.ParseFloats([][]byte{arg0, arg1})
-			if err != nil {
-				return
-			}
-			setStatementFlag(floats[0] <= floats[1])
-
-		default:
-			return fmt.Errorf("command %s: %s operator unknown", command, op)
-
-		}
-		is.active = true
-		i.state.ifStatements[file] = is
+		commands.EvaluateStatement(&stm, file, command, args, func(s string, b []byte) ([]byte, error) {
+			return i.resolve(s, b, nil)
+		})
+		i.state.statements.Store(file, stm)
 
 	case commandElse:
-		is := i.state.ifStatements[file]
-		is.resPointer = ELSE
-		i.state.ifStatements[file] = is
+		var stm commands.Statements
+		stm, err = i.state.statementLoad(file)
+		if err != nil {
+			return
+		}
+
+		commands.MvToElse(&stm)
+		i.state.statements.Store(file, stm)
 
 	case commandIfEnd:
-		is := i.state.ifStatements[file]
-		is.active = false
-		i.state.ifStatements[file] = is
-
-		var lines [][]byte
-		if is.res == IF {
-			lines = i.state.ifStatements[file].ifLines
-		} else {
-			lines = i.state.ifStatements[file].elseLines
+		var stm commands.Statements
+		stm, err = i.state.statementLoad(file)
+		if err != nil {
+			return
 		}
 
-		for _, l := range lines {
-			var mod []byte
-			mod, err = i.resolve(file, l, nil)
-			if err != nil {
-				return
-			}
-			_, err = i.state.buf.Write(append(mod, i.lineEnding...))
-			if err != nil {
-				return
-			}
-		}
-	}
-	return
-}
-
-func (i *Interpreter) appendIfStatementLine(file string, b []byte) {
-	is := i.state.ifStatements[file]
-	if is.resPointer == IF {
-		is.ifLines = append(i.state.ifStatements[file].ifLines, b)
-	} else {
-		is.elseLines = append(i.state.ifStatements[file].elseLines, b)
-	}
-	i.state.ifStatements[file] = is
-}
-
-func matchUntilSymbol(val [][]byte, matchSymbol, untilSymbol []byte) (ret [][]byte, idx int) {
-	var (
-		openCount int
-		b         []byte
-	)
-	idx = -1
-	for idx, b = range val {
-		if len(bytes.TrimSpace(b)) == 0 {
-			continue
-		}
-
-		ret = append(ret, b)
-		openCount += bytes.Count(b, matchSymbol)
-		openCount -= bytes.Count(b, untilSymbol)
-		if openCount == 0 {
+		err = commands.Resolve(&stm, file, i.lineEnding, i.state.buf, func(s string, b []byte) ([]byte, error) {
+			return i.resolve(s, b, nil)
+		})
+		i.state.statements.Store(file, stm)
+		if err != nil {
 			return
 		}
 	}
 	return
 }
 
-func findSymbols(val [][]byte, afterSymbols [][]byte) (ret []byte, idx int) {
-	var b []byte
-	idx = -1
-	for idx, b = range val {
-		v := bytes.TrimSpace(b)
-		if len(v) == 0 {
-			continue
-		}
-		for _, sym := range afterSymbols {
-			if bytes.Equal(v, sym) {
-				idx++
-				ret = b
-				return
-			}
-		}
+func (i *Interpreter) appendStatementLine(file string, b []byte) (err error) {
+	stm, err := i.state.statementLoad(file)
+	if err != nil {
+		return
 	}
-	return
-}
 
-func statementOperators() [][]byte {
-	return [][]byte{
-		[]byte("=="),
-		[]byte("="),
-		[]byte("!="),
-		[]byte("<>"),
-		[]byte(">="),
-		[]byte(">"),
-		[]byte("<="),
-		[]byte("<"),
-	}
+	commands.AppendStatementLine(&stm, b)
+	i.state.statements.Store(file, stm)
+	return
 }
