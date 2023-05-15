@@ -64,25 +64,9 @@ type state struct {
 	unscopedVars []common.Var
 	foreach      sync.Map
 	statements   sync.Map
-	ifStatements map[string]ifStatements
 	dirMode      bool
 	buf          *bytes.Buffer
 	*sync.Mutex
-}
-
-type stmnt uint
-
-const (
-	IF stmnt = iota
-	ELSE
-)
-
-type ifStatements struct {
-	active     bool
-	resPointer stmnt
-	res        stmnt
-	ifLines    [][]byte
-	elseLines  [][]byte
 }
 
 func defaultImportPrefixes() []string {
@@ -103,7 +87,7 @@ func New(opts *Options) (i Interpreter) {
 			dependencies:       map[string][]string{},
 			unscopedVarIndexes: map[string]indexer{},
 			foreach:            sync.Map{},
-			ifStatements:       map[string]ifStatements{},
+			statements:         sync.Map{},
 			buf:                &bytes.Buffer{},
 			Mutex:              &sync.Mutex{},
 		},

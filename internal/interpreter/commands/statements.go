@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 
 	"github.com/xiroxasx/fastplate/internal/common"
 	"github.com/xiroxasx/fastplate/internal/interpreter/functions"
@@ -12,12 +13,26 @@ import (
 type Statements struct {
 	statementBuf []statementBuffer
 	c            cursor
+	open         int
 }
 
 type statementBuffer struct {
-	lines [][][]byte
+	lines         [][][]byte
+	c             cursor
+	initC         cursor
+	refFrom       pointer
+	nextRef       int
+	nextStatement statementPointer
+}
+
+type statementPointer struct {
+	index     int
+	statement int
+}
+
+type pointer struct {
+	index int
 	c     cursor
-	condC cursor
 }
 
 type cursor struct {
@@ -32,6 +47,7 @@ func (stm *Statements) Active() bool {
 }
 
 func EvaluateStatement(stm *Statements, file, command string, args [][]byte, resolve ResolveFn) (err error) {
+	stm.open++
 	templateStart := common.TemplateStart()
 	templateEnd := common.TemplateEnd()
 	setStatementFlag := func(b bool) {
@@ -43,9 +59,23 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, res
 		stm.c.p++
 	}
 
+	lastBufIdx := int(math.Max(0, float64(len(stm.statementBuf)-1)))
 	if len(stm.statementBuf)-1 < stm.c.p {
 		stm.statementBuf = append(stm.statementBuf, statementBuffer{lines: make([][][]byte, 2)})
 	}
+	if lastBufIdx >= len(stm.statementBuf) {
+		lastBufIdx--
+	}
+	lastBuf := &stm.statementBuf[lastBufIdx]
+
+	latest := &stm.statementBuf[stm.c.p]
+	latest.refFrom = pointer{index: lastBufIdx, c: cursor{p: int(lastBuf.c.p)}}
+	defer func() {
+		lastBuf.nextStatement = statementPointer{
+			index:     stm.open - 1,
+			statement: lastBuf.initC.p,
+		}
+	}()
 
 	// Get the first (left) part of the if statement.
 	r, idx := matchUntilSymbol(args, templateStart, templateEnd)
@@ -116,19 +146,22 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, res
 }
 
 func MvToElse(stm *Statements) {
-	stm.statementBuf[stm.c.p-1].condC.p = 1
+	stm.statementBuf[stm.c.p-1].initC.p = 1
 }
 
 // TODO: Currently all if statements get evaluated.
 // Add option to "follow" the "evaluation path".
 func Resolve(stm *Statements, file string, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
+	stm.open--
 	if stm.c.p-1 > 0 {
 		stm.c.p--
 		return
 	}
 
-	for _, sb := range stm.statementBuf {
-		for _, l := range sb.lines[sb.c.p] {
+	idx := 0
+	for {
+		buf := stm.statementBuf[idx]
+		for _, l := range buf.lines[buf.c.p] {
 			fmt.Println(string(l))
 			var mod []byte
 			mod, err = resolve(file, l)
@@ -140,14 +173,20 @@ func Resolve(stm *Statements, file string, lineEnding []byte, w io.Writer, resol
 				return
 			}
 		}
+
+		if idx+1 == len(stm.statementBuf) || buf.c.p != buf.nextStatement.statement {
+			break
+		}
+		idx++
 	}
+
 	return
 }
 
 func AppendStatementLine(stm *Statements, b []byte) {
 	stmP := stm.c.p - 1
 	buf := stm.statementBuf[stmP]
-	stm.statementBuf[stmP].lines[buf.condC.p] = append(stm.statementBuf[stmP].lines[buf.condC.p], b)
+	stm.statementBuf[stmP].lines[buf.initC.p] = append(stm.statementBuf[stmP].lines[buf.initC.p], b)
 	return
 }
 
