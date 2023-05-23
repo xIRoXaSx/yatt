@@ -142,7 +142,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 			stm = commands.Statements{}
 		}
 
-		commands.EvaluateStatement(&stm, file, command, args, func(s string, b []byte) ([]byte, error) {
+		commands.EvaluateStatement(&stm, file, command, args, lineNum, func(s string, b []byte) ([]byte, error) {
 			return i.resolve(s, b, nil)
 		})
 		i.state.statements.Store(file, stm)

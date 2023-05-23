@@ -17,12 +17,13 @@ type Statements struct {
 }
 
 type statementBuffer struct {
-	lines         [][][]byte
-	c             cursor
-	initC         cursor
-	refFrom       pointer
-	nextRef       int
-	nextStatement statementPointer
+	lines     [][][]byte
+	c         cursor
+	initC     cursor
+	ln        int
+	lnPad     int
+	startNext []int
+	next      statementPointer
 }
 
 type statementPointer struct {
@@ -46,7 +47,7 @@ func (stm *Statements) Active() bool {
 	return stm.c.p > 0
 }
 
-func EvaluateStatement(stm *Statements, file, command string, args [][]byte, resolve ResolveFn) (err error) {
+func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lineNum int, resolve ResolveFn) (err error) {
 	stm.open++
 	templateStart := common.TemplateStart()
 	templateEnd := common.TemplateEnd()
@@ -60,18 +61,16 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, res
 	}
 
 	lastBufIdx := int(math.Max(0, float64(len(stm.statementBuf)-1)))
-	if len(stm.statementBuf)-1 < stm.c.p {
-		stm.statementBuf = append(stm.statementBuf, statementBuffer{lines: make([][][]byte, 2)})
+	if len(stm.statementBuf)-1 < stm.c.p+stm.c.j {
+		stm.statementBuf = append(stm.statementBuf, statementBuffer{ln: lineNum, lines: make([][][]byte, 2)})
 	}
 	if lastBufIdx >= len(stm.statementBuf) {
 		lastBufIdx--
 	}
 	lastBuf := &stm.statementBuf[lastBufIdx]
-
-	latest := &stm.statementBuf[stm.c.p]
-	latest.refFrom = pointer{index: lastBufIdx, c: cursor{p: int(lastBuf.c.p)}}
+	stm.statementBuf[stm.c.p].startNext = append(stm.statementBuf[stm.c.p].startNext, lineNum-lastBuf.ln)
 	defer func() {
-		lastBuf.nextStatement = statementPointer{
+		lastBuf.next = statementPointer{
 			index:     stm.open - 1,
 			statement: lastBuf.initC.p,
 		}
@@ -146,40 +145,93 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, res
 }
 
 func MvToElse(stm *Statements) {
-	stm.statementBuf[stm.c.p-1].initC.p = 1
+	buf := &stm.statementBuf[stm.c.p-1]
+	buf.lnPad++
+	buf.initC.p = 1
 }
 
-// TODO: Currently all if statements get evaluated.
-// Add option to "follow" the "evaluation path".
+// Currently only non-same-levelled if-statements are read correctly...
 func Resolve(stm *Statements, file string, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
 	stm.open--
+	//stm.statementBuf[stm.c.p+stm.c.j].lnPad++
+	stm.c.j = len(stm.statementBuf) - stm.c.p
 	if stm.c.p-1 > 0 {
 		stm.c.p--
 		return
 	}
 
-	idx := 0
+	var idx int
 	for {
 		buf := stm.statementBuf[idx]
-		for _, l := range buf.lines[buf.c.p] {
-			fmt.Println(string(l))
-			var mod []byte
-			mod, err = resolve(file, l)
+		var last int
+		for _, ln := range buf.startNext {
+			last, err = test(stm, idx, last, ln, file, lineEnding, w, resolve)
 			if err != nil {
 				return
 			}
-			_, err = w.Write(append(mod, lineEnding...))
-			if err != nil {
-				return
-			}
-		}
 
-		if idx+1 == len(stm.statementBuf) || buf.c.p != buf.nextStatement.statement {
+			if buf.c.p != buf.next.statement {
+				return
+			}
+
+			idx++
+			buf = stm.statementBuf[idx]
+		}
+		if idx == len(stm.statementBuf) {
 			break
 		}
-		idx++
 	}
 
+	return
+}
+
+func test(stm *Statements, idx, start, until int, file string, lineEnding []byte, w io.Writer, resolve ResolveFn) (iter int, err error) {
+	buf := stm.statementBuf[idx]
+	ln := buf.ln
+	//ln += buf.lnPad
+	next := stm.statementBuf[idx]
+	if idx+1 < len(stm.statementBuf) {
+		next = stm.statementBuf[idx+1]
+	}
+
+	for i, l := range buf.lines[buf.c.p][start:] {
+		if i == until {
+			ln = i
+		}
+
+		for _, nextIdx := range buf.startNext {
+			if i+1 != nextIdx {
+				continue
+			}
+
+			_, err = test(stm, idx+1, 0, until, file, lineEnding, w, resolve)
+			if err != nil {
+				return
+			}
+			continue
+		}
+
+		ln++
+		if ln == next.ln {
+			iter = i
+			_, err = test(stm, idx+1, i, until, file, lineEnding, w, resolve)
+			if err != nil {
+				return
+			}
+			continue
+		}
+
+		fmt.Println(string(l))
+		var mod []byte
+		mod, err = resolve(file, l)
+		if err != nil {
+			return
+		}
+		_, err = w.Write(append(mod, lineEnding...))
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
