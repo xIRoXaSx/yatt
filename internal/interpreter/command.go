@@ -164,7 +164,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 			return
 		}
 
-		err = commands.Resolve(&stm, file, i.lineEnding, i.state.buf, func(s string, b []byte) ([]byte, error) {
+		err = commands.Resolve(&stm, file, 0, i.lineEnding, i.state.buf, func(s string, b []byte) ([]byte, error) {
 			return i.resolve(s, b, nil)
 		})
 		i.state.statements.Store(file, stm)

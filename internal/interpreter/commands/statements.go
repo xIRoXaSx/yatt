@@ -49,34 +49,25 @@ func (stm *Statements) Active() bool {
 
 func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lineNum int, resolve ResolveFn) (err error) {
 	stm.open++
-	templateStart := common.TemplateStart()
-	templateEnd := common.TemplateEnd()
-	setStatementFlag := func(b bool) {
-		if b {
-			stm.statementBuf[stm.c.p].c.p = 0
-		} else {
-			stm.statementBuf[stm.c.p].c.p = 1
-		}
-		stm.c.p++
-	}
-
-	lastBufIdx := int(math.Max(0, float64(len(stm.statementBuf)-1)))
 	if len(stm.statementBuf)-1 < stm.c.p+stm.c.j {
 		stm.statementBuf = append(stm.statementBuf, statementBuffer{ln: lineNum, lines: make([][][]byte, 2)})
 	}
-	if lastBufIdx >= len(stm.statementBuf) {
+	lastBufIdx := int(math.Max(0, float64(len(stm.statementBuf)-1)))
+	if lastBufIdx > 0 {
 		lastBufIdx--
 	}
 	lastBuf := &stm.statementBuf[lastBufIdx]
 	stm.statementBuf[stm.c.p].startNext = append(stm.statementBuf[stm.c.p].startNext, lineNum-lastBuf.ln)
 	defer func() {
 		lastBuf.next = statementPointer{
-			index:     stm.open - 1,
+			index:     stm.c.p + stm.c.j,
 			statement: lastBuf.initC.p,
 		}
 	}()
 
 	// Get the first (left) part of the if statement.
+	templateStart := common.TemplateStart()
+	templateEnd := common.TemplateEnd()
 	r, idx := matchUntilSymbol(args, templateStart, templateEnd)
 	arg0 := bytes.Join(r, []byte(""))
 	if idx+1 > len(args) {
@@ -98,12 +89,13 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 	if err != nil {
 		return
 	}
+	var eval bool
 	switch string(op) {
 	case "=", "==":
-		setStatementFlag(bytes.Equal(arg0, arg1))
+		eval = bytes.Equal(arg0, arg1)
 
 	case "!=", "<>":
-		setStatementFlag(!bytes.Equal(arg0, arg1))
+		eval = !bytes.Equal(arg0, arg1)
 
 	case ">":
 		var floats []float64
@@ -111,7 +103,7 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 		if err != nil {
 			return
 		}
-		setStatementFlag(floats[0] > floats[1])
+		eval = floats[0] > floats[1]
 
 	case ">=":
 		var floats []float64
@@ -119,7 +111,7 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 		if err != nil {
 			return
 		}
-		setStatementFlag(floats[0] >= floats[1])
+		eval = floats[0] >= floats[1]
 
 	case "<":
 		var floats []float64
@@ -127,7 +119,7 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 		if err != nil {
 			return
 		}
-		setStatementFlag(floats[0] < floats[1])
+		eval = floats[0] < floats[1]
 
 	case "<=":
 		var floats []float64
@@ -135,12 +127,19 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 		if err != nil {
 			return
 		}
-		setStatementFlag(floats[0] <= floats[1])
+		eval = floats[0] <= floats[1]
 
 	default:
 		return fmt.Errorf("command %s: %s operator unknown", command, op)
 
 	}
+
+	if eval {
+		stm.statementBuf[stm.c.p].c.p = 0
+	} else {
+		stm.statementBuf[stm.c.p].c.p = 1
+	}
+	stm.c.p++
 	return
 }
 
@@ -150,88 +149,111 @@ func MvToElse(stm *Statements) {
 	buf.initC.p = 1
 }
 
-// Currently only non-same-levelled if-statements are read correctly...
-func Resolve(stm *Statements, file string, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
+// func Resolve1(stm *Statements, file string, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
+// 	stm.open--
+// 	stm.c.j = len(stm.statementBuf) - stm.c.p
+// 	if stm.c.p-1 > 0 {
+// 		// Not every statement is closed.
+// 		stm.c.p--
+// 		return
+// 	}
+
+// 	var idx int
+// 	for {
+// 		buf := stm.statementBuf[idx]
+// 		var last int
+// 		for _, ln := range buf.startNext {
+// 			last, err = test(stm, idx, last, ln, file, lineEnding, w, resolve)
+// 			if err != nil {
+// 				return
+// 			}
+
+// 			if buf.c.p != buf.next.statement {
+// 				return
+// 			}
+
+// 			idx++
+// 			buf = stm.statementBuf[idx]
+// 		}
+// 		if idx == len(stm.statementBuf) {
+// 			break
+// 		}
+// 	}
+
+// 	return
+// }
+
+// TODO: Use stm.c.p and stm.c.j to point to correct statement.
+//
+//	Currently only non-same-levelled if-statements are read correctly...
+func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
 	stm.open--
-	//stm.statementBuf[stm.c.p+stm.c.j].lnPad++
-	stm.c.j = len(stm.statementBuf) - stm.c.p
+	stm.c.j = len(stm.statementBuf) - stm.open
 	if stm.c.p-1 > 0 {
 		stm.c.p--
 		return
 	}
 
-	var idx int
-	for {
+	loopLines := func(idx, start int) (next int, err error) {
 		buf := stm.statementBuf[idx]
-		var last int
-		for _, ln := range buf.startNext {
-			last, err = test(stm, idx, last, ln, file, lineEnding, w, resolve)
+		for i, l := range buf.lines[buf.c.p][start:] {
+			for _, ln := range buf.startNext {
+				if i+1 == ln {
+					next = i + 1
+					break
+				}
+			}
+			// Check if next statement is required.
+			if next != 0 {
+				return
+			}
+
+			// Write back.
+			fmt.Println(string(l))
+			var mod []byte
+			mod, err = resolve(file, l)
 			if err != nil {
 				return
 			}
-
-			if buf.c.p != buf.next.statement {
+			_, err = w.Write(append(mod, lineEnding...))
+			if err != nil {
 				return
 			}
-
-			idx++
-			buf = stm.statementBuf[idx]
 		}
+		return
+	}
+
+	for {
+		//buf := stm.statementBuf[idx]
+		var next int
+		next, err = loopLines(idx, next)
+		if err != nil {
+			return
+		}
+
+		if next != 0 {
+			for next != 0 && next-1 < len(stm.statementBuf[idx].lines[stm.c.p]) {
+				_, err = loopLines(idx+1, 0)
+				if err != nil {
+					return
+				}
+
+				next, err = loopLines(idx, next-1)
+				if err != nil {
+					return
+				}
+			}
+			// This index has already been used + looped through,
+			// skip this one.
+			idx++
+		}
+
+		idx++
 		if idx == len(stm.statementBuf) {
 			break
 		}
 	}
 
-	return
-}
-
-func test(stm *Statements, idx, start, until int, file string, lineEnding []byte, w io.Writer, resolve ResolveFn) (iter int, err error) {
-	buf := stm.statementBuf[idx]
-	ln := buf.ln
-	//ln += buf.lnPad
-	next := stm.statementBuf[idx]
-	if idx+1 < len(stm.statementBuf) {
-		next = stm.statementBuf[idx+1]
-	}
-
-	for i, l := range buf.lines[buf.c.p][start:] {
-		if i == until {
-			ln = i
-		}
-
-		for _, nextIdx := range buf.startNext {
-			if i+1 != nextIdx {
-				continue
-			}
-
-			_, err = test(stm, idx+1, 0, until, file, lineEnding, w, resolve)
-			if err != nil {
-				return
-			}
-			continue
-		}
-
-		ln++
-		if ln == next.ln {
-			iter = i
-			_, err = test(stm, idx+1, i, until, file, lineEnding, w, resolve)
-			if err != nil {
-				return
-			}
-			continue
-		}
-
-		fmt.Println(string(l))
-		var mod []byte
-		mod, err = resolve(file, l)
-		if err != nil {
-			return
-		}
-		_, err = w.Write(append(mod, lineEnding...))
-		if err != nil {
-			return
-		}
-	}
 	return
 }
 
