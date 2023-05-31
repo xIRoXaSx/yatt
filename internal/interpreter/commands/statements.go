@@ -14,6 +14,7 @@ type Statements struct {
 	statementBuf []statementBuffer
 	c            cursor
 	open         int
+	resolveJump  int
 }
 
 type statementBuffer struct {
@@ -21,9 +22,7 @@ type statementBuffer struct {
 	c         cursor
 	initC     cursor
 	ln        int
-	lnPad     int
 	startNext []int
-	next      statementPointer
 }
 
 type statementPointer struct {
@@ -49,7 +48,8 @@ func (stm *Statements) Active() bool {
 
 func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lineNum int, resolve ResolveFn) (err error) {
 	stm.open++
-	if len(stm.statementBuf)-1 < stm.c.p+stm.c.j {
+	fmt.Println("\tnum:", lineNum, "open:", stm.open)
+	if len(stm.statementBuf)-1 < statementPtr(stm)+1 || stm.resolveJump > 0 {
 		stm.statementBuf = append(stm.statementBuf, statementBuffer{ln: lineNum, lines: make([][][]byte, 2)})
 	}
 	lastBufIdx := int(math.Max(0, float64(len(stm.statementBuf)-1)))
@@ -58,12 +58,6 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 	}
 	lastBuf := &stm.statementBuf[lastBufIdx]
 	stm.statementBuf[stm.c.p].startNext = append(stm.statementBuf[stm.c.p].startNext, lineNum-lastBuf.ln)
-	defer func() {
-		lastBuf.next = statementPointer{
-			index:     stm.c.p + stm.c.j,
-			statement: lastBuf.initC.p,
-		}
-	}()
 
 	// Get the first (left) part of the if statement.
 	templateStart := common.TemplateStart()
@@ -134,62 +128,37 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 
 	}
 
+	//buf := &stm.statementBuf[stm.c.p]
+	buf := &stm.statementBuf[stm.c.p+stm.c.j]
 	if eval {
-		stm.statementBuf[stm.c.p].c.p = 0
+		buf.c.p = 0
 	} else {
-		stm.statementBuf[stm.c.p].c.p = 1
+		buf.c.p = 1
 	}
 	stm.c.p++
+
+	stm.c.j = len(stm.statementBuf) - stm.open
+	stm.resolveJump = 0
 	return
 }
 
-func MvToElse(stm *Statements) {
-	buf := &stm.statementBuf[stm.c.p-1]
-	buf.lnPad++
-	buf.initC.p = 1
+func MvToElse(stm *Statements, lineNum int) {
+	////stm.statementBuf[stm.c.p-1].initC.p = 1
+	fmt.Println("Else:", lineNum, statementPtr(stm), stm.c.j)
+	stm.statementBuf[statementPtr(stm)].initC.p = 1
 }
 
-// func Resolve1(stm *Statements, file string, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
-// 	stm.open--
-// 	stm.c.j = len(stm.statementBuf) - stm.c.p
-// 	if stm.c.p-1 > 0 {
-// 		// Not every statement is closed.
-// 		stm.c.p--
-// 		return
-// 	}
-
-// 	var idx int
-// 	for {
-// 		buf := stm.statementBuf[idx]
-// 		var last int
-// 		for _, ln := range buf.startNext {
-// 			last, err = test(stm, idx, last, ln, file, lineEnding, w, resolve)
-// 			if err != nil {
-// 				return
-// 			}
-
-// 			if buf.c.p != buf.next.statement {
-// 				return
-// 			}
-
-// 			idx++
-// 			buf = stm.statementBuf[idx]
-// 		}
-// 		if idx == len(stm.statementBuf) {
-// 			break
-// 		}
-// 	}
-
-// 	return
-// }
-
-// TODO: Use stm.c.p and stm.c.j to point to correct statement.
-//
-//	Currently only non-same-levelled if-statements are read correctly...
 func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
+	defer func() {
+		jumped := len(stm.statementBuf) - stm.open
+		if jumped > 0 {
+			stm.resolveJump = jumped
+			fmt.Println("jumped:", jumped, stm.c.j, stm.c.j+stm.c.p)
+		}
+	}()
+
 	stm.open--
-	stm.c.j = len(stm.statementBuf) - stm.open
-	if stm.c.p-1 > 0 {
+	if stm.open > 0 {
 		stm.c.p--
 		return
 	}
@@ -223,17 +192,28 @@ func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writ
 		return
 	}
 
+	// DEBUG ONLY!
+	for i, buf := range stm.statementBuf {
+		for s, statement := range buf.lines {
+			for _, l := range statement {
+				fmt.Println(i, s, string(l))
+			}
+		}
+	}
+
 	for {
-		//buf := stm.statementBuf[idx]
 		var next int
 		next, err = loopLines(idx, next)
 		if err != nil {
 			return
 		}
 
+		// TODO: Result2 is one layer too deep!
 		if next != 0 {
 			for next != 0 && next-1 < len(stm.statementBuf[idx].lines[stm.c.p]) {
-				_, err = loopLines(idx+1, 0)
+				var n int
+				_ = n
+				n, err = loopLines(idx+1, 0)
 				if err != nil {
 					return
 				}
@@ -243,8 +223,7 @@ func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writ
 					return
 				}
 			}
-			// This index has already been used + looped through,
-			// skip this one.
+			// This index has already been used + looped through, skip it.
 			idx++
 		}
 
@@ -257,11 +236,16 @@ func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writ
 	return
 }
 
+// TODO: Sibling statements cause shifting...
 func AppendStatementLine(stm *Statements, b []byte) {
-	stmP := stm.c.p - 1
+	stmP := statementPtr(stm)
 	buf := stm.statementBuf[stmP]
 	stm.statementBuf[stmP].lines[buf.initC.p] = append(stm.statementBuf[stmP].lines[buf.initC.p], b)
 	return
+}
+
+func statementPtr(stm *Statements) int {
+	return stm.c.p - 1 + stm.c.j
 }
 
 func matchUntilSymbol(val [][]byte, matchSymbol, untilSymbol []byte) (ret [][]byte, idx int) {

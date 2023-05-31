@@ -154,7 +154,7 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 			return
 		}
 
-		commands.MvToElse(&stm)
+		commands.MvToElse(&stm, lineNum)
 		i.state.statements.Store(file, stm)
 
 	case commandIfEnd:
