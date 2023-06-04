@@ -256,6 +256,7 @@ func (i *Interpreter) interpretFile(file string, indent []byte) (err error) {
 		}
 
 		callID := fmt.Sprintf("%s:%d", file, lineNum)
+
 		// Skip the indents.
 		linePart := l[len(indent):]
 		prefix := i.matchedImportPrefix(linePart)

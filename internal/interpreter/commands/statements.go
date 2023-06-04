@@ -14,6 +14,8 @@ type Statements struct {
 	statementBuf []statementBuffer
 	c            cursor
 	open         int
+	closed       int
+	lastElse     int
 	resolveJump  int
 }
 
@@ -128,7 +130,6 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 
 	}
 
-	//buf := &stm.statementBuf[stm.c.p]
 	buf := &stm.statementBuf[stm.c.p+stm.c.j]
 	if eval {
 		buf.c.p = 0
@@ -139,13 +140,17 @@ func EvaluateStatement(stm *Statements, file, command string, args [][]byte, lin
 
 	stm.c.j = len(stm.statementBuf) - stm.open
 	stm.resolveJump = 0
+	stm.closed = 0
+	stm.lastElse = 0
 	return
 }
 
 func MvToElse(stm *Statements, lineNum int) {
-	////stm.statementBuf[stm.c.p-1].initC.p = 1
-	fmt.Println("Else:", lineNum, statementPtr(stm), stm.c.j)
-	stm.statementBuf[statementPtr(stm)].initC.p = 1
+	ptr := statementPtr(stm)
+	if stm.closed > 1 {
+		stm.lastElse++
+	}
+	stm.statementBuf[ptr-stm.lastElse].initC.p = 1
 }
 
 func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writer, resolve ResolveFn) (err error) {
@@ -153,10 +158,11 @@ func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writ
 		jumped := len(stm.statementBuf) - stm.open
 		if jumped > 0 {
 			stm.resolveJump = jumped
-			fmt.Println("jumped:", jumped, stm.c.j, stm.c.j+stm.c.p)
 		}
 	}()
 
+	stm.lastElse = 0
+	stm.closed++
 	stm.open--
 	if stm.open > 0 {
 		stm.c.p--
@@ -239,6 +245,9 @@ func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writ
 // TODO: Sibling statements cause shifting...
 func AppendStatementLine(stm *Statements, b []byte) {
 	stmP := statementPtr(stm)
+	if stm.closed > 1 {
+		stmP -= stm.c.j
+	}
 	buf := stm.statementBuf[stmP]
 	stm.statementBuf[stmP].lines[buf.initC.p] = append(stm.statementBuf[stmP].lines[buf.initC.p], b)
 	return
