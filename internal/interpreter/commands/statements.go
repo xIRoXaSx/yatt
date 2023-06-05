@@ -170,6 +170,7 @@ func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writ
 	}
 
 	loopLines := func(idx, start int) (next int, err error) {
+		next = -1
 		buf := stm.statementBuf[idx]
 		for i, l := range buf.lines[buf.c.p][start:] {
 			for _, ln := range buf.startNext {
@@ -216,10 +217,9 @@ func Resolve(stm *Statements, file string, idx int, lineEnding []byte, w io.Writ
 
 		// TODO: Result2 is one layer too deep!
 		if next != 0 {
-			for next != 0 && next-1 < len(stm.statementBuf[idx].lines[stm.c.p]) {
-				var n int
-				_ = n
-				n, err = loopLines(idx+1, 0)
+			jumped := -1
+			for next != -1 && jumped != -1 && next-1 < len(stm.statementBuf[idx].lines[stm.c.p]) {
+				jumped, err = loopLines(idx+1, 0)
 				if err != nil {
 					return
 				}
