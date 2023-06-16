@@ -12,7 +12,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/xiroxasx/fastplate/internal/common"
-	"github.com/xiroxasx/fastplate/internal/interpreter/commands"
 )
 
 const varFileName = "fastplate.var"
@@ -268,18 +267,6 @@ func (i *Interpreter) interpretFile(file string, indent []byte) (err error) {
 			// Line does not contain one of the required prefixes.
 			if i.state.ignoreIndex[file] == 1 {
 				// Still in an ignore block.
-				continue
-			}
-
-			var stm commands.Statements
-			stm, err = i.state.statementLoad(file)
-			if err != nil && err != errMapLoadStatements {
-				return
-			}
-
-			if stm.Active() {
-				// Currently moving inside an if statement.
-				i.appendStatementLine(file, l)
 				continue
 			}
 

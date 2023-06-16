@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
-
-	"github.com/xiroxasx/fastplate/internal/interpreter/commands"
 )
 
 const (
@@ -131,63 +129,6 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 		i.state.foreach.Store(file, fe)
 		return
 
-	case commandIf:
-		var stm commands.Statements
-		stm, err = i.state.statementLoad(file)
-		if err != nil {
-			if err != errMapLoadStatements {
-				return
-			}
-			err = nil
-			stm = commands.Statements{}
-		}
-
-		err = commands.EvaluateStatement(&stm, file, command, args, lineNum, func(s string, b []byte) ([]byte, error) {
-			return i.resolve(s, b, nil)
-		})
-		if err != nil {
-			return
-		}
-		i.state.statements.Store(file, stm)
-
-	case commandElse:
-		var stm commands.Statements
-		stm, err = i.state.statementLoad(file)
-		if err != nil {
-			return
-		}
-
-		commands.MvToElse(&stm, lineNum)
-		i.state.statements.Store(file, stm)
-
-	case commandIfEnd:
-		var stm commands.Statements
-		stm, err = i.state.statementLoad(file)
-		if err != nil {
-			return
-		}
-
-		err = commands.Resolve(&stm, file, 0, i.lineEnding, i.state.buf, func(s string, b []byte) ([]byte, error) {
-			return i.resolve(s, b, nil)
-		})
-		if err != nil {
-			return
-		}
-		i.state.statements.Store(file, stm)
-		if err != nil {
-			return
-		}
 	}
-	return
-}
-
-func (i *Interpreter) appendStatementLine(file string, b []byte) (err error) {
-	stm, err := i.state.statementLoad(file)
-	if err != nil {
-		return
-	}
-
-	commands.AppendStatementLine(&stm, b)
-	i.state.statements.Store(file, stm)
 	return
 }

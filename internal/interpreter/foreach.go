@@ -171,6 +171,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		if err != nil {
 			return
 		}
+		// TODO: Recently added, needs to be tested thoroughly!
 		id++
 	}
 	mvBuff(buf)

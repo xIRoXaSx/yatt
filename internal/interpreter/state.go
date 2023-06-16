@@ -5,11 +5,9 @@ import (
 	"fmt"
 
 	"github.com/xiroxasx/fastplate/internal/common"
-	"github.com/xiroxasx/fastplate/internal/interpreter/commands"
 )
 
 var errMapLoadForeach = errors.New("unable to load foreach map values")
-var errMapLoadStatements = errors.New("unable to load statments map values")
 
 func (s *state) varLookup(file, name string) (v common.Var) {
 	v = s.lookupScoped(file, name)
@@ -77,21 +75,6 @@ func (s *state) foreachLoad(key string) (fe foreach, err error) {
 	fe, ok = ife.(foreach)
 	if !ok {
 		err = fmt.Errorf("unable to cast foreach's value")
-		return
-	}
-	return
-}
-
-// statementLoad loads the value with key and casts it to commands.Statements.
-func (s *state) statementLoad(key string) (fe commands.Statements, err error) {
-	ife, ok := s.statements.Load(key)
-	if !ok {
-		err = errMapLoadStatements
-		return
-	}
-	fe, ok = ife.(commands.Statements)
-	if !ok {
-		err = fmt.Errorf("unable to cast statements' value")
 		return
 	}
 	return
