@@ -72,8 +72,8 @@ func defaultImportPrefixes() []string {
 	return []string{"#fastplate", "# fastplate", "//fastplate", "// fastplate"}
 }
 
-func New(opts *Options) (i Interpreter) {
-	i = Interpreter{
+func New(opts *Options) (i *Interpreter) {
+	i = &Interpreter{
 		opts:       opts,
 		prefixes:   defaultImportPrefixes(),
 		lineEnding: []byte("\n"),

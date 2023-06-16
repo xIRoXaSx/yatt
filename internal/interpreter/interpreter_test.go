@@ -60,7 +60,7 @@ func TestInterpreter(t *testing.T) {
 	testInterpreter(t, ip, timeSeed, testGoldFileMode)
 }
 
-func testInterpreter(t *testing.T, ip Interpreter, timeSeed time.Time, goldPath string) {
+func testInterpreter(t *testing.T, ip *Interpreter, timeSeed time.Time, goldPath string) {
 	buf := &bytes.Buffer{}
 	zw := &zipWriter{Writer: zip.NewWriter(buf)}
 	defer func() {

@@ -17,7 +17,7 @@ project: fastplate
 env:
     VERSION:  1.1.2
     BIN_NAME: fastplate
-    PKG_DIR: interpreter
+    PKG_DIR: internal/interpreter
     DOCKER_DIR: ${ROOT}/docker
 
 interpreter: sh
@@ -38,8 +38,7 @@ commands:
                     go test \
                         -test.benchmem \
                         -test.bench="^\QBenchmarkFileInterpretation\E$" \
-                        -run=^$ \
-                        github.com/xiroxasx/fastplate/interpreter
+                        -run=^$github.com/xiroxasx/fastplate/interpreter
 
             writer:
                 help: benchmark the file interpretation with corresponding outputs
@@ -48,8 +47,7 @@ commands:
                     go test \
                         -benchmem \
                         -bench="^\QBenchmarkFileWrites\E$" \
-                        -run=^$ \
-                        github.com/xiroxasx/fastplate/interpreter
+                        -run=^$github.com/xiroxasx/fastplate/interpreter
 
     test:
         help: run all tests
