@@ -36,13 +36,13 @@ You can pass the listed arguments / options down below.
 The syntax for various interpretations are shown in the table down below.  
 The prefix `# fastplate` is always needed for fastplate's  interpretations and can also be used in form of `#fastplate`.  
 
-| Syntax                        | Description                                                                                                        |
-|-------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| import {FilePath}             | Import a file into the current template / partial. Paths are always relational to the working dir.                 |
-| var {Name} = {Value}          | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                                            |
-| ignore {start / end}          | Starts / ends a ignore block. Lines between these declarations will not be written to the output file.             |
-| foreach [{{var1}}, ...]       | Loops over each variable until it hits `foreachend`. Use `{{value}}` and `{{index}}` respectively inside the loop. |
-| foreachend                    | Signals the end of the foreach loop.                                                                               |
+| Syntax                  | Description                                                                                                        |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------|
+| import {FilePath}       | Import a file into the current template / partial. Paths are always relational to the working dir.                 |
+| var {Name} = {Value}    | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                                            |
+| ignore {start / end}    | Starts / ends a ignore block. Lines between these declarations will not be written to the output file.             |
+| foreach [{{var1}}, ...] | Loops over each variable until it hits `foreachend`. Use `{{value}}` and `{{index}}` respectively inside the loop. |
+| foreachend              | Signals the end of the foreach loop.                                                                               |
 
 ### Variables
 Import variables can be declared and used from inside the template / partial file (= scoped / local) or 

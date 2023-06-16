@@ -171,15 +171,13 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		if err != nil {
 			return
 		}
-		// TODO: Recently added, needs to be tested thoroughly!
 		id++
 	}
 	mvBuff(buf)
 	return
 }
 
-// resolveForeach resolves an import variable to its corresponding value.
-// If the variable could not be found, the placeholders will not get replaced!
+// resolveForeach resolves a foreach variable to its corresponding value.
 func (i *Interpreter) resolveForeach(varIdx, feIdx int, v common.Var, file string, line []byte) (ret []byte, err error) {
 	feVars := []common.Var{
 		common.NewVar(foreachValue, ""),

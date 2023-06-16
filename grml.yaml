@@ -15,7 +15,7 @@ version: 1
 project: fastplate
 
 env:
-    VERSION:  1.1.2
+    VERSION:  1.1.3
     BIN_NAME: fastplate
     PKG_DIR: internal/interpreter
     DOCKER_DIR: ${ROOT}/docker
@@ -81,9 +81,10 @@ commands:
     run:
         help: run the binary with the testdata as input
         exec: |
-            cd internal/interpreter
+            cd "${PKG_DIR}"
+            mkdir -p "testdata/dest"
             ${ROOT}/bin/${BIN_NAME}-v${VERSION} \
-                -in="testdata/src/rootfile.yaml" \
-                -out="testdata/dest/rootfile.yaml" \
+                -in="testdata/src/" \
+                -out="testdata/dest/" \
                 -var="testdata/fastplate.var" \
                 -indent

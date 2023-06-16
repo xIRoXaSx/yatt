@@ -54,8 +54,8 @@ func main() {
 	opts.InPath = filepath.Clean(opts.InPath)
 	opts.OutPath = filepath.Clean(opts.OutPath)
 
-	imp := interpreter.New(&opts)
-	err := imp.Start()
+	ip := interpreter.New(&opts)
+	err := ip.Start()
 	if err != nil {
 		log.Fatal().Err(err).Msg("error upon execution")
 	}

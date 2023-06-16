@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sync"
 )
@@ -17,26 +18,26 @@ const (
 func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNum int, callID string) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%v (%s)", err, callID)
+			err = fmt.Errorf("%s: %v (%s)", command, err, callID)
 		}
 	}()
 
 	switch command {
 	case commandIgnore:
 		if len(args) != 1 {
-			return fmt.Errorf("command %s: exactly 1 arg expected (start / end)", command)
+			return errors.New("exactly 1 arg expected, \"start\" or \"end\"")
 		}
 		i.ignore(file, string(args[0]))
 
 	case commandVar:
 		if len(args) < 2 {
-			return fmt.Errorf("command %s: expected a name and a value", command)
+			return errors.New("expected a name and a value")
 		}
 		i.setScopedVar(file, args)
 
 	case commandForeach:
 		if len(args) < 1 {
-			return fmt.Errorf("command %s: at least 1 arg expected", command)
+			return errors.New("at least 1 arg expected")
 		}
 
 		var fe foreach

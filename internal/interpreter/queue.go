@@ -11,7 +11,7 @@ func (q *queue) push(v foreachBuffer) {
 
 func (q *queue) mv(v int) {
 	vLen := len(q.v)
-	if vLen == 0 || q.p+v == vLen {
+	if vLen == 0 || q.p+v >= vLen {
 		return
 	}
 	q.mvTo(q.p + v)

@@ -248,7 +248,7 @@ func Fixed(args [][]byte) (ret []byte, err error) {
 	if err != nil {
 		return
 	}
-	decPlace := floats[1] * 10
-	ret = []byte(fmt.Sprint(math.Round(floats[0]*decPlace) / decPlace))
+	decPlace := math.Pow10(int(floats[1]))
+	ret = []byte(fmt.Sprint(math.Floor(floats[0]*decPlace) / decPlace))
 	return
 }

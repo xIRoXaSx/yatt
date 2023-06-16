@@ -1,16 +1,17 @@
 package functions
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
-func Var(fn string, args [][]byte, additionalVars []common.Var) (ret [][]byte, err error) {
+func Var(args [][]byte, additionalVars []common.Var) (ret [][]byte, err error) {
 	if len(args) != 2 {
-		err = fmt.Errorf("%s: exactly 2 args expected", fn)
+		err = errors.New("exactly 2 args expected")
 		return
 	}
+
 	// Check if any additional variable matches.
 	arg0 := args[0]
 	arg1 := args[1]

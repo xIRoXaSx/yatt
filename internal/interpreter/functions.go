@@ -152,12 +152,12 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 		ret = []byte(fmt.Sprint(l))
 
 	case functionVar:
-		var vars [][]byte
-		vars, err = functions.Var(function, args, additionalVars)
+		var newVar [][]byte
+		newVar, err = functions.Var(args, additionalVars)
 		if err != nil {
 			return
 		}
-		i.setScopedVar(fileName, [][]byte{vars[0], []byte("="), vars[1]})
+		i.setScopedVar(fileName, [][]byte{newVar[0], []byte("="), newVar[1]})
 	}
 	return
 }

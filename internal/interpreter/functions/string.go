@@ -46,9 +46,6 @@ func Replace(args [][]byte) (ret []byte, err error) {
 		return
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	ret = bytes.ReplaceAll(TrimQuotes(args[0]), TrimQuotes(args[1]), TrimQuotes(args[2]))
 	return
 }

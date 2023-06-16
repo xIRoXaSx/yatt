@@ -27,7 +27,10 @@ func EncodeHashToHex(h hash.Hash, file string) (sum []byte, err error) {
 		return
 	}
 
-	h.Write(b)
+	_, err = h.Write(b)
+	if err != nil {
+		return
+	}
 	s := h.Sum(nil)
 	sum = make([]byte, hex.EncodedLen(len(s)))
 	hex.Encode(sum, s)

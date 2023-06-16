@@ -94,7 +94,7 @@ func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 	i.state.unscopedVarIndexes[lowerVarFile] = idx
 }
 
-// resolve resolves an import variable to its corresponding value.
+// resolve resolves a variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
 func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []common.Var) (ret []byte, err error) {
 	templateStart := common.TemplateStart()
