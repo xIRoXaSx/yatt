@@ -111,7 +111,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 	}
 
 	buf := *fe.buf.load()
-	if len(buf.variables) == 1 {
+	if len(buf.variables) == 1 && !strings.HasPrefix(buf.variables[0].name, foreachUnscopedVars) {
 		var (
 			iterator int
 			var0     = buf.variables[0]
@@ -120,11 +120,13 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		if err != nil {
 			// The given arg is not an integer, check if variable holds an integer value.
 			iterator, err = strconv.Atoi(i.state.varLookup(file, var0.name).Value())
-			if err != nil && !strings.HasPrefix(var0.name, foreachUnscopedVars) {
+			if err != nil {
 				err = errors.New("foreach: single value provided but does not match integer value")
 				return
 			}
 		}
+		err = nil
+
 		// Loop should run as for-loop (0 < n).
 		for it := 0; it < iterator; it++ {
 			val := fmt.Sprint(it)
@@ -137,9 +139,8 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		return
 	}
 
-	id := -1
+	var id int
 	for vIdx, v := range buf.variables {
-		id++
 		// Check if loop should iterate over all unscoped vars.
 		if v.name == foreachUnscopedVars {
 			for idx, unscopedVar := range i.state.unscopedVars {
@@ -147,6 +148,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 				if err != nil {
 					return
 				}
+				id++
 			}
 			continue
 		}
@@ -160,6 +162,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 				if err != nil {
 					return
 				}
+				id++
 			}
 			continue
 		}
@@ -168,6 +171,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		if err != nil {
 			return
 		}
+		id++
 	}
 	mvBuff(buf)
 	return

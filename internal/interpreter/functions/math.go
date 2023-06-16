@@ -1,17 +1,18 @@
 package functions
 
 import (
+	"errors"
 	"fmt"
 	"math"
 )
 
-func Add(fn string, args [][]byte) (ret []byte, err error) {
+func Add(args [][]byte) (ret []byte, err error) {
 	var (
 		floats []float64
 		sum    float64
 	)
 	if len(args) < 2 {
-		err = fmt.Errorf("%s: at least 2 args expected", fn)
+		err = errors.New("at least 2 args expected")
 		return
 	}
 
@@ -26,10 +27,10 @@ func Add(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Ceil(fn string, args [][]byte) (ret []byte, err error) {
+func Ceil(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) != 1 {
-		err = fmt.Errorf("%s: exactly 1 arg expected", fn)
+		err = errors.New("exactly 1 arg expected")
 		return
 	}
 
@@ -41,13 +42,13 @@ func Ceil(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Div(fn string, args [][]byte) (ret []byte, err error) {
+func Div(args [][]byte) (ret []byte, err error) {
 	var (
 		floats []float64
 		sum    float64
 	)
 	if len(args) < 2 {
-		err = fmt.Errorf("%s: at least 2 args expected", fn)
+		err = errors.New("at least 2 args expected")
 		return
 	}
 
@@ -63,10 +64,10 @@ func Div(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Floor(fn string, args [][]byte) (ret []byte, err error) {
+func Floor(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) != 1 {
-		err = fmt.Errorf("%s: exactly 1 arg expected", fn)
+		err = errors.New("exactly 1 arg expected")
 		return
 	}
 
@@ -78,10 +79,10 @@ func Floor(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Max(fn string, args [][]byte) (ret []byte, err error) {
+func Max(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) < 2 {
-		err = fmt.Errorf("%s: at least 2 args expected", fn)
+		err = errors.New("at least 2 args expected")
 		return
 	}
 
@@ -97,10 +98,10 @@ func Max(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Min(fn string, args [][]byte) (ret []byte, err error) {
+func Min(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) < 2 {
-		err = fmt.Errorf("%s: at least 2 args expected", fn)
+		err = errors.New("at least 2 args expected")
 		return
 	}
 
@@ -116,10 +117,10 @@ func Min(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Mod(fn string, args [][]byte) (ret []byte, err error) {
+func Mod(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) != 2 {
-		err = fmt.Errorf("%s: exactly 2 args expected", fn)
+		err = errors.New("exactly 2 args expected")
 		return
 	}
 
@@ -131,10 +132,10 @@ func Mod(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func ModMin(fn string, args [][]byte) (ret []byte, err error) {
+func ModMin(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) != 3 {
-		err = fmt.Errorf("%s: exactly 3 args expected", fn)
+		err = errors.New("exactly 3 args expected")
 		return
 	}
 
@@ -147,13 +148,13 @@ func ModMin(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Mult(fn string, args [][]byte) (ret []byte, err error) {
+func Mult(args [][]byte) (ret []byte, err error) {
 	var (
 		floats []float64
 		sum    float64
 	)
 	if len(args) < 2 {
-		err = fmt.Errorf("%s: at least 2 args expected", fn)
+		err = errors.New("at least 2 args expected")
 		return
 	}
 
@@ -169,10 +170,40 @@ func Mult(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Round(fn string, args [][]byte) (ret []byte, err error) {
+func Pow(args [][]byte) (ret []byte, err error) {
+	var floats []float64
+	if len(args) < 2 {
+		err = errors.New("at least 2 args expected")
+		return
+	}
+
+	floats, err = ParseFloats(args)
+	if err != nil {
+		return
+	}
+	ret = []byte(fmt.Sprint(math.Pow(floats[0], floats[1])))
+	return
+}
+
+func Sqrt(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) != 1 {
-		err = fmt.Errorf("%s: exactly 1 arg expected", fn)
+		err = errors.New("exactly 1 arg expected")
+		return
+	}
+
+	floats, err = ParseFloats(args)
+	if err != nil {
+		return
+	}
+	ret = []byte(fmt.Sprint(math.Sqrt(floats[0])))
+	return
+}
+
+func Round(args [][]byte) (ret []byte, err error) {
+	var floats []float64
+	if len(args) != 1 {
+		err = errors.New("exactly 1 arg expected")
 		return
 	}
 
@@ -184,13 +215,13 @@ func Round(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Sub(fn string, args [][]byte) (ret []byte, err error) {
+func Sub(args [][]byte) (ret []byte, err error) {
 	var (
 		floats []float64
 		sum    float64
 	)
 	if len(args) < 2 {
-		err = fmt.Errorf("%s: at least 2 args expected", fn)
+		err = errors.New("at least 2 args expected")
 		return
 	}
 
@@ -206,10 +237,10 @@ func Sub(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Fixed(fn string, args [][]byte) (ret []byte, err error) {
+func Fixed(args [][]byte) (ret []byte, err error) {
 	var floats []float64
 	if len(args) != 2 {
-		err = fmt.Errorf("%s: exactly 2 arg expected", fn)
+		err = errors.New("exactly 2 arg expected")
 		return
 	}
 

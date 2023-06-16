@@ -5,12 +5,12 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
-	"fmt"
+	"errors"
 )
 
-func Sha1(fn string, args [][]byte) (ret []byte, err error) {
+func Sha1(args [][]byte) (ret []byte, err error) {
 	if len(args) != 1 {
-		err = fmt.Errorf("%s: exactly 1 arg expected", fn)
+		err = errors.New("exactly 1 arg expected")
 		return
 	}
 
@@ -18,9 +18,9 @@ func Sha1(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Sha256(fn string, args [][]byte) (ret []byte, err error) {
+func Sha256(args [][]byte) (ret []byte, err error) {
 	if len(args) != 1 {
-		err = fmt.Errorf("%s: exactly 1 arg expected", fn)
+		err = errors.New("exactly 1 arg expected")
 		return
 	}
 
@@ -31,9 +31,9 @@ func Sha256(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Sha512(fn string, args [][]byte) (ret []byte, err error) {
+func Sha512(args [][]byte) (ret []byte, err error) {
 	if len(args) != 1 {
-		err = fmt.Errorf("%s: exactly 1 arg expected", fn)
+		err = errors.New("exactly 1 arg expected")
 		return
 	}
 
@@ -41,9 +41,9 @@ func Sha512(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Md5(fn string, args [][]byte) (ret []byte, err error) {
+func Md5(args [][]byte) (ret []byte, err error) {
 	if len(args) != 1 {
-		err = fmt.Errorf("%s: exactly 1 arg expected", fn)
+		err = errors.New("exactly 1 arg expected")
 		return
 	}
 

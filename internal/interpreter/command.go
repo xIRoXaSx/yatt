@@ -142,9 +142,12 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 			stm = commands.Statements{}
 		}
 
-		commands.EvaluateStatement(&stm, file, command, args, lineNum, func(s string, b []byte) ([]byte, error) {
+		err = commands.EvaluateStatement(&stm, file, command, args, lineNum, func(s string, b []byte) ([]byte, error) {
 			return i.resolve(s, b, nil)
 		})
+		if err != nil {
+			return
+		}
 		i.state.statements.Store(file, stm)
 
 	case commandElse:
@@ -167,6 +170,9 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 		err = commands.Resolve(&stm, file, 0, i.lineEnding, i.state.buf, func(s string, b []byte) ([]byte, error) {
 			return i.resolve(s, b, nil)
 		})
+		if err != nil {
+			return
+		}
 		i.state.statements.Store(file, stm)
 		if err != nil {
 			return

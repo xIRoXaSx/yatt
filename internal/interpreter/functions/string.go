@@ -2,13 +2,13 @@ package functions
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"strconv"
 )
 
-func Split(fn string, args [][]byte) (ret []byte, err error) {
+func Split(args [][]byte) (ret []byte, err error) {
 	if len(args) != 3 {
-		err = fmt.Errorf("%s: exactly 3 args expected", fn)
+		err = errors.New("exactly 3 args expected")
 		return
 	}
 
@@ -25,9 +25,9 @@ func Split(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Repeat(fn string, args [][]byte) (ret []byte, err error) {
+func Repeat(args [][]byte) (ret []byte, err error) {
 	if len(args) != 2 {
-		err = fmt.Errorf("%s: exactly 2 args expected", fn)
+		err = errors.New("exactly 2 args expected")
 		return
 	}
 
@@ -40,9 +40,9 @@ func Repeat(fn string, args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Replace(fn string, args [][]byte) (ret []byte, err error) {
+func Replace(args [][]byte) (ret []byte, err error) {
 	if len(args) != 3 {
-		err = fmt.Errorf("%s: exactly 3 args expected", fn)
+		err = errors.New("exactly 3 args expected")
 		return
 	}
 

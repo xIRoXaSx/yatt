@@ -19,6 +19,8 @@ const (
 	functionSubtract   = "sub"
 	functionDivide     = "div"
 	functionMultiply   = "mult"
+	functionPower      = "pow"
+	functionSquareRoot = "sqrt"
 	functionMax        = "max"
 	functionMin        = "min"
 	functionModulus    = "mod"
@@ -31,6 +33,7 @@ const (
 	functionSha256     = "sha256"
 	functionSha512     = "sha512"
 	functionShaMd5     = "md5"
+	functionNow        = "now"
 	functionSplit      = "split"
 	functionRepeat     = "repeat"
 	functionReplace    = "replace"
@@ -44,6 +47,12 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 		return
 	}
 
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("%s: %v: %v", fileName, function, err)
+		}
+	}()
+
 	switch function {
 	case functionLower:
 		ret = bytes.ToLower(args[0])
@@ -55,61 +64,70 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 		ret = cases.Title(language.English, cases.NoLower).Bytes(args[0])
 
 	case functionAddition:
-		ret, err = functions.Add(function, args)
+		ret, err = functions.Add(args)
 
 	case functionSubtract:
-		ret, err = functions.Sub(function, args)
+		ret, err = functions.Sub(args)
 
 	case functionMultiply:
-		ret, err = functions.Mult(function, args)
+		ret, err = functions.Mult(args)
+
+	case functionPower:
+		ret, err = functions.Pow(args)
+
+	case functionSquareRoot:
+		ret, err = functions.Sqrt(args)
 
 	case functionDivide:
-		ret, err = functions.Div(function, args)
+		ret, err = functions.Div(args)
 
 	case functionMax:
-		ret, err = functions.Max(function, args)
+		ret, err = functions.Max(args)
 
 	case functionMin:
-		ret, err = functions.Min(function, args)
+		ret, err = functions.Min(args)
 
 	case functionModulus:
-		ret, err = functions.Mod(function, args)
+		ret, err = functions.Mod(args)
 
 	case functionModulusMin:
-		ret, err = functions.ModMin(function, args)
+		ret, err = functions.ModMin(args)
 
 	case functionFloor:
-		ret, err = functions.Floor(function, args)
+		ret, err = functions.Floor(args)
 
 	case functionCeil:
-		ret, err = functions.Ceil(function, args)
+		ret, err = functions.Ceil(args)
 
 	case functionRound:
-		ret, err = functions.Round(function, args)
+		ret, err = functions.Round(args)
 
 	case functionToFixed:
-		ret, err = functions.Fixed(function, args)
+		ret, err = functions.Fixed(args)
 
 	case functionSha1:
-		ret, err = functions.Sha1(function, args)
+		ret, err = functions.Sha1(args)
 
 	case functionSha256:
-		ret, err = functions.Sha256(function, args)
+		ret, err = functions.Sha256(args)
 
 	case functionSha512:
-		ret, err = functions.Sha512(function, args)
+		ret, err = functions.Sha512(args)
 
 	case functionShaMd5:
-		ret, err = functions.Md5(function, args)
+		ret, err = functions.Md5(args)
+
+	case functionNow:
+		ret, err = functions.Now(args)
 
 	case functionSplit:
-		ret, err = functions.Split(function, args)
+		ret, err = functions.Split(args)
 
 	case functionRepeat:
-		ret, err = functions.Repeat(function, args)
+		ret, err = functions.Repeat(args)
 
 	case functionReplace:
-		ret, err = functions.Replace(function, args)
+		ret, err = functions.Replace(args)
 
 	case functionLength:
 		if len(args) != 1 {

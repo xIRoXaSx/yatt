@@ -205,6 +205,10 @@ func (i *Interpreter) runDirMode() (err error) {
 
 		// Write buffer to the file and cut last new line.
 		_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
+		if err != nil {
+			return err
+		}
+		i.state.buf.Reset()
 		return err
 	})
 	return
