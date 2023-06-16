@@ -12,9 +12,6 @@ const (
 	commandForeach    = "foreach"
 	commandForeachEnd = "foreachend"
 	commandImport     = "import"
-	commandIf         = "if"
-	commandElse       = "else"
-	commandIfEnd      = "ifend"
 )
 
 func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNum int, callID string) (err error) {

@@ -43,9 +43,6 @@ The prefix `# fastplate` is always needed for fastplate's  interpretations and c
 | ignore {start / end}          | Starts / ends a ignore block. Lines between these declarations will not be written to the output file.             |
 | foreach [{{var1}}, ...]       | Loops over each variable until it hits `foreachend`. Use `{{value}}` and `{{index}}` respectively inside the loop. |
 | foreachend                    | Signals the end of the foreach loop.                                                                               |
-| if {value} {operator} {value} | A common if statement. Operators are `==` (or `=`), `!=` (or `<>`), `>`, `>=`, `<`, `<=`.                          |
-| else                          | A common else statement. Only works in combination with an `if` statement.                                         |
-| ifend                         | Signals the end of the if statement.                                                                               |
 
 ### Variables
 Import variables can be declared and used from inside the template / partial file (= scoped / local) or 
@@ -65,6 +62,8 @@ You can use the following functions for any type of variable or static values:
 | sub()         | Subtracts the given numbers from the first one (variable or static values possible).          | `{{sub(varName, ...)}}`                |
 | mult()        | Multiplies the given numbers (variable or static values possible).                            | `{{mult(varName, ...)}}`               |
 | div()         | Divides the given numbers from the first one (variable or static values possible).            | `{{div(varName, ...)}}`                |
+| pow()         | Calculates the power of the given values (first arg = base, second arg = exponent).           | `{{pow(varName, ...)}}`                |
+| sqrt()        | Calculates the square root of the given value.                                                | `{{sqrt(varName, ...)}}`               |
 | max()         | Chooses the maximum of the given numbers (variable or static values possible).                | `{{max(varName, ...)}}`                |
 | min()         | Chooses the minimum of the given numbers (variable or static values possible).                | `{{min(varName, ...)}}`                |
 | mod()         | Calculates the modulo (variable or static values possible).                                   | `{{mod(varName, ...)}}`                |
@@ -77,6 +76,7 @@ You can use the following functions for any type of variable or static values:
 | sha256()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha256(file_path)}}`                |
 | sha512()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha512(file_path)}}`                |
 | md5()         | Calculates the MD5 sum of the given file.                                                     | `{{md5(file_path)}}`                   |
+| now()         | Prints the time of execution in the given [format](https://pkg.go.dev/time#pkg-constants).    | `{{now(format)}}`                      |
 | lower()       | Prints the variable's value in lower case.                                                    | `{{lower(varName)}}`                   |
 | upper()       | Prints the variable's value in upper case.                                                    | `{{upper(varName)}}`                   |
 | cap()         | Prints the first letter of each word of the variable's value in upper case.                   | `{{cap(varName)}}`                     |
@@ -253,20 +253,4 @@ Shopping list:
   2x apples
   2x ORANGES
   2x Bananas
-```
-
-7. Use if-else statements:
-```text
-  # fastplate var item = apple
-  # fastplate var other = oranges
-  # fastplate var another = bananas
-  # fastplate if {{len(item)}} > {{len(other)}}
-    {{other}} is shorter!
-  # fastplate else
-    # fastplate if {{len(other)}} > {{len(another)}}
-      {{another}} is shorter!
-    # fastplate else
-      {{other}} is shorter!
-    # fastplate ifend
-  # fastplate ifend
 ```
