@@ -59,12 +59,10 @@ type state struct {
 	scopedRegistry     scopedRegistry
 	dependencies       map[string][]string
 	unscopedVarIndexes map[string]indexer
-	//unscopedVars       []variable
-	unscopedVars []common.Var
-	foreach      sync.Map
-	statements   sync.Map
-	dirMode      bool
-	buf          *bytes.Buffer
+	unscopedVars       []common.Var
+	foreach            sync.Map
+	dirMode            bool
+	buf                *bytes.Buffer
 	*sync.Mutex
 }
 
@@ -86,7 +84,6 @@ func New(opts *Options) (i *Interpreter) {
 			dependencies:       map[string][]string{},
 			unscopedVarIndexes: map[string]indexer{},
 			foreach:            sync.Map{},
-			statements:         sync.Map{},
 			buf:                &bytes.Buffer{},
 			Mutex:              &sync.Mutex{},
 		},

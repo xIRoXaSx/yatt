@@ -39,7 +39,7 @@ func (s *state) addDependency(fileName, dependency string) {
 	s.dependencies[fileName] = append(s.dependencies[fileName], dependency)
 }
 
-// hasCyclicDependency walks down the dependencies to check whether the given dependency has creates a loop.
+// hasCyclicDependency walks down the dependencies to check whether the given dependency creates a loop.
 // Returns true if a cycle has been detected.
 func (s *state) hasCyclicDependency(fileName, dependency string) bool {
 	for _, d := range s.dependencies[dependency] {
@@ -49,18 +49,6 @@ func (s *state) hasCyclicDependency(fileName, dependency string) bool {
 			return false
 		}
 		return s.hasCyclicDependency(fileName, d)
-	}
-	return false
-}
-
-func (s *state) followDependency(dependency, target string) bool {
-	for _, d := range s.dependencies[dependency] {
-		if d == target {
-			return true
-		} else if d == "" {
-			return false
-		}
-		return s.followDependency(d, target)
 	}
 	return false
 }
