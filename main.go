@@ -10,10 +10,10 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/fastplate/interpreter"
+	"github.com/xiroxasx/fastplate/internal/interpreter"
 )
 
-func parseFlags() (a importer.Options) {
+func parseFlags() (a interpreter.Options) {
 	flag.BoolVar(&a.Indent, "indent", false, "whether to retain indention or not")
 	flag.BoolVar(&a.NoStats, "no-stats", false, "do not print stats at the end of the execution")
 	flag.StringVar(&a.InPath, "in", "", "the root path")
@@ -54,8 +54,8 @@ func main() {
 	opts.InPath = filepath.Clean(opts.InPath)
 	opts.OutPath = filepath.Clean(opts.OutPath)
 
-	imp := importer.New(&opts)
-	err := imp.Start()
+	ip := interpreter.New(&opts)
+	err := ip.Start()
 	if err != nil {
 		log.Fatal().Err(err).Msg("error upon execution")
 	}

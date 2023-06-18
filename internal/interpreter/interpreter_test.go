@@ -1,4 +1,4 @@
-package importer
+package interpreter
 
 import (
 	"archive/zip"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	r "github.com/stretchr/testify/require"
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 type zipWriter struct {
@@ -59,7 +60,7 @@ func TestInterpreter(t *testing.T) {
 	testInterpreter(t, ip, timeSeed, testGoldFileMode)
 }
 
-func testInterpreter(t *testing.T, ip Interpreter, timeSeed time.Time, goldPath string) {
+func testInterpreter(t *testing.T, ip *Interpreter, timeSeed time.Time, goldPath string) {
 	buf := &bytes.Buffer{}
 	zw := &zipWriter{Writer: zip.NewWriter(buf)}
 	defer func() {
@@ -109,19 +110,19 @@ func BenchmarkFileInterpretation(b *testing.B) {
 		state: state{
 			ignoreIndex: map[string]int8{},
 			scopedRegistry: scopedRegistry{
-				scopedVars: map[string][]variable{},
+				scopedVars: map[string][]common.Var{},
 				Mutex:      &sync.Mutex{},
 			},
-			unscopedVars: []variable{},
+			unscopedVars: []common.Var{},
 			dependencies: map[string][]string{},
+			buf:          &bytes.Buffer{},
 			Mutex:        &sync.Mutex{},
 		},
 	}
-	buf := bytes.Buffer{}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r.NoError(b, ip.interpretFile(filepath.Join("testdata", "src", "rootfile.yaml"), nil, &buf))
+		r.NoError(b, ip.interpretFile(filepath.Join("testdata", "src", "rootfile.yaml"), nil))
 	}
 }
 

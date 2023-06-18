@@ -1,10 +1,9 @@
-package importer
+package interpreter
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 const varFileName = "fastplate.var"
@@ -50,7 +50,7 @@ type indexer struct {
 }
 
 type scopedRegistry struct {
-	scopedVars map[string][]variable
+	scopedVars map[string][]common.Var
 	*sync.Mutex
 }
 
@@ -59,40 +59,32 @@ type state struct {
 	scopedRegistry     scopedRegistry
 	dependencies       map[string][]string
 	unscopedVarIndexes map[string]indexer
-	unscopedVars       []variable
-	foreach            map[string]foreach
+	unscopedVars       []common.Var
+	foreach            sync.Map
 	dirMode            bool
+	buf                *bytes.Buffer
 	*sync.Mutex
 }
 
-type variable struct {
-	name  string
-	value string
-}
-
-type foreach struct {
-	variables []variable
-	lines     [][]byte
-}
-
 func defaultImportPrefixes() []string {
-	return []string{"#fastplate", "# fastplate"}
+	return []string{"#fastplate", "# fastplate", "//fastplate", "// fastplate"}
 }
 
-func New(opts *Options) (i Interpreter) {
-	i = Interpreter{
+func New(opts *Options) (i *Interpreter) {
+	i = &Interpreter{
 		opts:       opts,
 		prefixes:   defaultImportPrefixes(),
 		lineEnding: []byte("\n"),
 		state: state{
 			ignoreIndex: map[string]int8{},
 			scopedRegistry: scopedRegistry{
-				scopedVars: map[string][]variable{},
+				scopedVars: map[string][]common.Var{},
 				Mutex:      &sync.Mutex{},
 			},
 			dependencies:       map[string][]string{},
 			unscopedVarIndexes: map[string]indexer{},
-			foreach:            map[string]foreach{},
+			foreach:            sync.Map{},
+			buf:                &bytes.Buffer{},
 			Mutex:              &sync.Mutex{},
 		},
 	}
@@ -130,7 +122,6 @@ func New(opts *Options) (i Interpreter) {
 			i.setUnscopedVar(strings.TrimSuffix(filepath.Base(vf), filepath.Ext(vf)), split[1:])
 		}
 	}
-
 	return
 }
 
@@ -193,8 +184,7 @@ func (i *Interpreter) runDirMode() (err error) {
 		}
 
 		// Write to the buffer to ensure that files don't get partially written.
-		buf := &bytes.Buffer{}
-		err = i.interpretFile(inPath, nil, buf)
+		err = i.interpretFile(inPath, nil)
 		if err != nil {
 			return err
 		}
@@ -210,7 +200,11 @@ func (i *Interpreter) runDirMode() (err error) {
 		}()
 
 		// Write buffer to the file and cut last new line.
-		_, err = out.Write(buf.Bytes()[:buf.Len()-1])
+		_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
+		if err != nil {
+			return err
+		}
+		i.state.buf.Reset()
 		return err
 	})
 	return
@@ -230,21 +224,20 @@ func (i *Interpreter) runFileMode() (err error) {
 	}()
 
 	// Write to the buffer to ensure that files don't get partially written.
-	buf := &bytes.Buffer{}
-	err = i.interpretFile(i.opts.InPath, nil, buf)
+	err = i.interpretFile(i.opts.InPath, nil)
 	if err != nil {
 		return
 	}
 
 	// Write buffer to the file and cut last new line.
-	_, err = out.Write(buf.Bytes()[:buf.Len()-1])
+	_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
 	return
 }
 
-func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Writer) (err error) {
-	cont, err := os.ReadFile(filePath)
+func (i *Interpreter) interpretFile(file string, indent []byte) (err error) {
+	cont, err := os.ReadFile(file)
 	if err != nil {
-		log.Warn().Err(err).Str("file", filePath).Msg("unable to read file")
+		log.Warn().Err(err).Str("file", file).Msg("unable to read file")
 		return
 	}
 
@@ -256,32 +249,45 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 	}
 
 	lines := bytes.Split(cont, cutSet)
-	for _, l := range lines {
+	for lineNum, l := range lines {
+		lineNum++
 		if i.opts.Indent {
 			indent = leadingIndents(l)
 		}
+
+		callID := fmt.Sprintf("%s:%d", file, lineNum)
 
 		// Skip the indents.
 		linePart := l[len(indent):]
 		prefix := i.matchedImportPrefix(linePart)
 		if prefix == nil {
 			// Line does not contain one of the required prefixes.
-			if i.state.ignoreIndex[filePath] == 1 {
+			if i.state.ignoreIndex[file] == 1 {
 				// Still in an ignore block.
 				continue
 			}
-			if len(i.state.foreach[filePath].variables) > 0 {
+
+			var fe foreach
+			fe, err = i.state.foreachLoad(file)
+			if err != nil && err != errMapLoadForeach {
+				return
+			}
+
+			if err == nil && fe.buf.v != nil && fe.c.p >= 0 && len(fe.buf.v[fe.c.p].variables) > 0 {
 				// Currently moving inside a foreach loop.
-				i.appendLine(filePath, l)
+				err = i.appendForeachLine(file, l)
+				if err != nil {
+					return
+				}
 				continue
 			}
 
 			var ret []byte
-			ret, err = i.resolve(filePath, l, nil)
+			ret, err = i.resolve(file, l, nil)
 			if err != nil {
 				return
 			}
-			_, err = out.Write(append(ret, cutSet...))
+			_, err = i.state.buf.Write(append(ret, cutSet...))
 			if err != nil {
 				return
 			}
@@ -290,7 +296,7 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 			statement := i.TrimLine(linePart, prefix)
 			split := bytes.Split(statement, []byte{' '})
 			if len(split) > 0 && string(split[0]) != commandImport {
-				err = i.executeCommand(string(split[0]), filePath, split[1:], out)
+				err = i.executeCommand(string(split[0]), file, split[1:], lineNum, callID)
 				if err != nil {
 					return
 				}
@@ -301,14 +307,14 @@ func (i *Interpreter) interpretFile(filePath string, indent []byte, out io.Write
 				err = errors.New("no import path given")
 				return
 			}
-			stmnt := filepath.Clean(string(split[1]))
-			filePath = filepath.Clean(filePath)
-			if i.state.hasCyclicDependency(filePath, stmnt) {
-				err = fmt.Errorf("detected import cycle: %s -> %s", filePath, stmnt)
+			s := filepath.Clean(string(split[1]))
+			file = filepath.Clean(file)
+			if i.state.hasCyclicDependency(file, s) {
+				err = fmt.Errorf("detected import cycle: %s -> %s", file, s)
 				return
 			}
-			i.state.addDependency(filePath, stmnt)
-			err = i.interpretFile(stmnt, indent, out)
+			i.state.addDependency(file, s)
+			err = i.interpretFile(s, indent)
 			if err != nil {
 				return err
 			}

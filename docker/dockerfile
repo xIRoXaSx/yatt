@@ -10,4 +10,5 @@ RUN apk update \
 
 FROM alpine:latest
 COPY --from=builder "/data/fastplate" /data/
+WORKDIR /work
 ENTRYPOINT ["/data/fastplate"]
