@@ -4,7 +4,8 @@ go 1.19
 
 require (
 	github.com/rs/zerolog v1.29.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.4
+	github.com/xiroxasx/godate v0.0.0-20230621194613-29c2afc66ac3
 	golang.org/x/text v0.8.0
 )
 

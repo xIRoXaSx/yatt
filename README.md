@@ -56,35 +56,35 @@ variables without passing in the `-var` argument.
 Functions can be combined / nested like in the following example: `{{func_1(arg1, arg2, {{func_2(arg3, arg4)}})}}`.
 You can use the following functions for any type of variable or static values:
 
-| Function name | Description                                                                                   | Example                                |
-|---------------|-----------------------------------------------------------------------------------------------|----------------------------------------|
-| add()         | Adds the given numbers (variable or static values possible).                                  | `{{add(varName, ...)}}`                |
-| sub()         | Subtracts the given numbers from the first one (variable or static values possible).          | `{{sub(varName, ...)}}`                |
-| mult()        | Multiplies the given numbers (variable or static values possible).                            | `{{mult(varName, ...)}}`               |
-| div()         | Divides the given numbers from the first one (variable or static values possible).            | `{{div(varName, ...)}}`                |
-| pow()         | Calculates the power of the given values (first arg = base, second arg = exponent).           | `{{pow(varName, ...)}}`                |
-| sqrt()        | Calculates the square root of the given value.                                                | `{{sqrt(varName, ...)}}`               |
-| max()         | Chooses the maximum of the given numbers (variable or static values possible).                | `{{max(varName, ...)}}`                |
-| min()         | Chooses the minimum of the given numbers (variable or static values possible).                | `{{min(varName, ...)}}`                |
-| mod()         | Calculates the modulo (variable or static values possible).                                   | `{{mod(varName, ...)}}`                |
-| modmin()      | Same as `mod` but defaults to `min` when remainder is 0 (variable or static values possible). | `{{modmin(varName, ..., min)}}`        |
-| floor()       | Rounds down the given value to the nearest integer value.                                     | `{{floor(varName)}}`                   |
-| ceil()        | Rounds up the given value to the nearest integer value.                                       | `{{ceil(varName)}}`                    |
-| round()       | Rounds the given value to the nearest integer value.                                          | `{{round(varName)}}`                   |
-| fixed()       | Rounds the given float value to the given `decimal` place.                                    | `{{fixed(varName, decimal)}}`          |
-| sha1()        | Calculates the SHA1 sum of the given file.                                                    | `{{sha1(file_path)}}`                  |
-| sha256()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha256(file_path)}}`                |
-| sha512()      | Calculates the SHA256 sum of the given file.                                                  | `{{sha512(file_path)}}`                |
-| md5()         | Calculates the MD5 sum of the given file.                                                     | `{{md5(file_path)}}`                   |
-| now()         | Prints the time of execution in the given [format](https://pkg.go.dev/time#pkg-constants).    | `{{now(format)}}`                      |
-| lower()       | Prints the variable's value in lower case.                                                    | `{{lower(varName)}}`                   |
-| upper()       | Prints the variable's value in upper case.                                                    | `{{upper(varName)}}`                   |
-| cap()         | Prints the first letter of each word of the variable's value in upper case.                   | `{{cap(varName)}}`                     |
-| split()       | Splits the value by `seperator` and print the element at `index`.                             | `{{split(varName, seperator, index)}}` |
-| repeat()      | Repeats the given value `amount` times.                                                       | `{{repeat(varName, amount)}}`          |
-| replace()     | Replaces `old` in the given value `value` with `new`.                                         | `{{replace(value, old, new)}}`         |
-| len()         | Either prints the length or the amount of variables (`UNSCOPED_VARS`) of the given value      | `{{len(varName)}}`                     |
-| var()         | Creates a new scoped variable which can be used after the declaration.                        | `{{var(varName, value)}}`              |
+| Function name | Description                                                                                     | Example                                |
+|---------------|-------------------------------------------------------------------------------------------------|----------------------------------------|
+| add()         | Adds the given numbers (variable or static values possible).                                    | `{{add(varName, ...)}}`                |
+| sub()         | Subtracts the given numbers from the first one (variable or static values possible).            | `{{sub(varName, ...)}}`                |
+| mult()        | Multiplies the given numbers (variable or static values possible).                              | `{{mult(varName, ...)}}`               |
+| div()         | Divides the given numbers from the first one (variable or static values possible).              | `{{div(varName, ...)}}`                |
+| pow()         | Calculates the power of the given values (first arg = base, second arg = exponent).             | `{{pow(varName, ...)}}`                |
+| sqrt()        | Calculates the square root of the given value.                                                  | `{{sqrt(varName, ...)}}`               |
+| max()         | Chooses the maximum of the given numbers (variable or static values possible).                  | `{{max(varName, ...)}}`                |
+| min()         | Chooses the minimum of the given numbers (variable or static values possible).                  | `{{min(varName, ...)}}`                |
+| mod()         | Calculates the modulo (variable or static values possible).                                     | `{{mod(varName, ...)}}`                |
+| modmin()      | Same as `mod` but defaults to `min` when remainder is 0 (variable or static values possible).   | `{{modmin(varName, ..., min)}}`        |
+| floor()       | Rounds down the given value to the nearest integer value.                                       | `{{floor(varName)}}`                   |
+| ceil()        | Rounds up the given value to the nearest integer value.                                         | `{{ceil(varName)}}`                    |
+| round()       | Rounds the given value to the nearest integer value.                                            | `{{round(varName)}}`                   |
+| fixed()       | Rounds the given float value to the given `decimal` place.                                      | `{{fixed(varName, decimal)}}`          |
+| sha1()        | Calculates the SHA1 sum of the given file.                                                      | `{{sha1(file_path)}}`                  |
+| sha256()      | Calculates the SHA256 sum of the given file.                                                    | `{{sha256(file_path)}}`                |
+| sha512()      | Calculates the SHA256 sum of the given file.                                                    | `{{sha512(file_path)}}`                |
+| md5()         | Calculates the MD5 sum of the given file.                                                       | `{{md5(file_path)}}`                   |
+| now()         | Prints the time of execution in the given [format](https://github.com/xIRoXaSx/godate#formats). | `{{now(format)}}`                      |
+| lower()       | Prints the variable's value in lower case.                                                      | `{{lower(varName)}}`                   |
+| upper()       | Prints the variable's value in upper case.                                                      | `{{upper(varName)}}`                   |
+| cap()         | Prints the first letter of each word of the variable's value in upper case.                     | `{{cap(varName)}}`                     |
+| split()       | Splits the value by `seperator` and print the element at `index`.                               | `{{split(varName, seperator, index)}}` |
+| repeat()      | Repeats the given value `amount` times.                                                         | `{{repeat(varName, amount)}}`          |
+| replace()     | Replaces `old` in the given value `value` with `new`.                                           | `{{replace(value, old, new)}}`         |
+| len()         | Either prints the length or the amount of variables (`UNSCOPED_VARS`) of the given value        | `{{len(varName)}}`                     |
+| var()         | Creates a new scoped variable which can be used after the declaration.                          | `{{var(varName, value)}}`              |
 
 ### Loops
 Looping over multiple variables can be implemented by using the `foreach` syntax.  
