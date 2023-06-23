@@ -3,6 +3,8 @@ package functions
 import (
 	"errors"
 	"time"
+
+	"github.com/xiroxasx/godate"
 )
 
 func Now(args [][]byte) (ret []byte, err error) {
@@ -11,6 +13,7 @@ func Now(args [][]byte) (ret []byte, err error) {
 		return
 	}
 
-	ret = []byte(time.Now().Format(string(args[0])))
+	date := godate.New(time.Now())
+	ret = []byte(date.Format(string(args[0])))
 	return
 }

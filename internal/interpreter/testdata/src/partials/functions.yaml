@@ -23,7 +23,7 @@ Examples: |
   Sha256Sum:         {{sha256(./testdata/src/partials/functions.yaml)}}
   Sha512Sum:         {{sha512(./testdata/src/partials/functions.yaml)}}
   MD5:               {{md5(./testdata/src/partials/functions.yaml)}}
-  Now:               {{now(2006-01-02 15:04:05)}}
+  Now:               {{now(YYYY-MM-DD hh:mm:ss)}}
   Lower:             {{lower(var3)}}  
   Upper:             {{upper(var3)}}
   Cap:               {{cap(var3)}}
