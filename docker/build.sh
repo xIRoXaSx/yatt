@@ -2,7 +2,7 @@
 build_docker() {
   . ./.env
   sudo docker build ../ --file ./dockerfile \
-     -t="${IMG_TAG%:*}:$(git describe --tags --abbrev=0 || echo 'latest')" \
+     -t="${IMG_TAG%:*}:${VERSION}" \
      --build-arg="GOOS=${GOOS}" \
      --build-arg="GOARCH=${GOARCH}"
 }

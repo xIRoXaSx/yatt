@@ -15,5 +15,4 @@ func (i *Interpreter) ignore(filename string, arg string) {
 	case ignoreEnd:
 		i.state.ignoreIndex[filename] = 0
 	}
-	return
 }

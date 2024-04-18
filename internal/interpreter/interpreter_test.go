@@ -70,6 +70,7 @@ func testInterpreter(t *testing.T, ip *Interpreter, timeSeed time.Time, goldPath
 
 	// Write the in-memory zip file.
 	r.NoError(t, filepath.WalkDir(ip.opts.OutPath, func(p string, d os.DirEntry, err error) error {
+		r.NoError(t, err)
 		if d.IsDir() {
 			return nil
 		}
@@ -86,6 +87,7 @@ func testInterpreter(t *testing.T, ip *Interpreter, timeSeed time.Time, goldPath
 			Modified:           timeSeed,
 			UncompressedSize64: uint64(stat.Size()),
 		})
+		r.NoError(t, err)
 		b, err := io.ReadAll(f)
 		r.NoError(t, err)
 		_, err = w.Write(b)

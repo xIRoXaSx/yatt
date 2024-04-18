@@ -83,6 +83,8 @@ You can use the following functions for any type of variable or static values:
 | split()       | Splits the value by `seperator` and print the element at `index`.                               | `{{split(varName, seperator, index)}}` |
 | repeat()      | Repeats the given value `amount` times.                                                         | `{{repeat(varName, amount)}}`          |
 | replace()     | Replaces `old` in the given value `value` with `new`.                                           | `{{replace(value, old, new)}}`         |
+| fbasename()   | Prints the current file's base name (filename + extension)                                      | `{{fbasename()}}`                      |
+| fname()       | Prints the current file's name (relative path included)                                         | `{{fname()}}`                          |
 | len()         | Either prints the length or the amount of variables (`UNSCOPED_VARS`) of the given value        | `{{len(varName)}}`                     |
 | var()         | Creates a new scoped variable which can be used after the declaration.                          | `{{var(varName, value)}}`              |
 
