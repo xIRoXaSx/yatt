@@ -16,6 +16,8 @@ Examples: |
   Modulo:            {{mod(3, 2)}}
   Modulo with min:   {{modmin(9, 9, 2)}}
   Floor:             {{floor(1.75)}} 
+  FileBaseName:      {{fbasename()}}
+  FileName:          {{fname()}}
   Ceil:              {{ceil(1.75)}}
   Round:             {{round(1.75)}}
   Fixed:             {{fixed(1.757575, 3)}}

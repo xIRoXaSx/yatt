@@ -3,6 +3,7 @@ package interpreter
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/xiroxasx/fastplate/internal/common"
@@ -12,33 +13,35 @@ import (
 )
 
 const (
-	functionLower      = "lower"
-	functionUpper      = "upper"
-	functionCapitalize = "cap"
-	functionAddition   = "add"
-	functionSubtract   = "sub"
-	functionDivide     = "div"
-	functionMultiply   = "mult"
-	functionPower      = "pow"
-	functionSquareRoot = "sqrt"
-	functionMax        = "max"
-	functionMin        = "min"
-	functionModulus    = "mod"
-	functionModulusMin = "modmin"
-	functionFloor      = "floor"
-	functionCeil       = "ceil"
-	functionRound      = "round"
-	functionToFixed    = "fixed"
-	functionSha1       = "sha1"
-	functionSha256     = "sha256"
-	functionSha512     = "sha512"
-	functionShaMd5     = "md5"
-	functionNow        = "now"
-	functionSplit      = "split"
-	functionRepeat     = "repeat"
-	functionReplace    = "replace"
-	functionLength     = "len"
-	functionVar        = "var"
+	functionFileBaseName = "fbasename"
+	functionFileName     = "fname"
+	functionLower        = "lower"
+	functionUpper        = "upper"
+	functionCapitalize   = "cap"
+	functionAddition     = "add"
+	functionSubtract     = "sub"
+	functionDivide       = "div"
+	functionMultiply     = "mult"
+	functionPower        = "pow"
+	functionSquareRoot   = "sqrt"
+	functionMax          = "max"
+	functionMin          = "min"
+	functionModulus      = "mod"
+	functionModulusMin   = "modmin"
+	functionFloor        = "floor"
+	functionCeil         = "ceil"
+	functionRound        = "round"
+	functionToFixed      = "fixed"
+	functionSha1         = "sha1"
+	functionSha256       = "sha256"
+	functionSha512       = "sha512"
+	functionShaMd5       = "md5"
+	functionNow          = "now"
+	functionSplit        = "split"
+	functionRepeat       = "repeat"
+	functionReplace      = "replace"
+	functionLength       = "len"
+	functionVar          = "var"
 )
 
 func (i *Interpreter) executeFunction(function string, args [][]byte, fileName string, additionalVars []common.Var) (ret []byte, err error) {
@@ -54,6 +57,12 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 	}()
 
 	switch function {
+	case functionFileName:
+		ret = []byte(fileName)
+
+	case functionFileBaseName:
+		ret = []byte(filepath.Base(fileName))
+
 	case functionLower:
 		ret = bytes.ToLower(args[0])
 
