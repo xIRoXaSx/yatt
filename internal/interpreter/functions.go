@@ -3,6 +3,7 @@ package interpreter
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 )
 
 const (
+	functionEnvVar       = "env"
 	functionFileBaseName = "fbasename"
 	functionFileName     = "fname"
 	functionLower        = "lower"
@@ -59,6 +61,9 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 	switch function {
 	case functionFileName:
 		ret = []byte(fileName)
+
+	case functionEnvVar:
+		ret = []byte(os.Getenv(string(args[0])))
 
 	case functionFileBaseName:
 		ret = []byte(filepath.Base(fileName))

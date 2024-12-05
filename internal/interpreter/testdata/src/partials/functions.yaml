@@ -15,6 +15,7 @@ Examples: |
   Min:               {{min(var1, 20, 50, var2)}}
   Modulo:            {{mod(3, 2)}}
   Modulo with min:   {{modmin(9, 9, 2)}}
+  Env:               {{env(TEST)}}
   Floor:             {{floor(1.75)}} 
   FileBaseName:      {{fbasename()}}
   FileName:          {{fname()}}
