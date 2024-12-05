@@ -15,7 +15,7 @@ version: 2
 project: fastplate
 
 env:
-    VERSION:  1.1.4
+    VERSION:  v1.1.4
     BIN_NAME: fastplate
     PKG_DIR: internal/interpreter
     DOCKER_DIR: ${ROOT}/docker

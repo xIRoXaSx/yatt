@@ -68,6 +68,7 @@ You can use the following functions for any type of variable or static values:
 | min()         | Chooses the minimum of the given numbers (variable or static values possible).                  | `{{min(varName, ...)}}`                |
 | mod()         | Calculates the modulo (variable or static values possible).                                     | `{{mod(varName, ...)}}`                |
 | modmin()      | Same as `mod` but defaults to `min` when remainder is 0 (variable or static values possible).   | `{{modmin(varName, ..., min)}}`        |
+| env()         | Prints the value of the given environment variable.                                             | `{{env(ENV_VAR)}}`                     |
 | floor()       | Rounds down the given value to the nearest integer value.                                       | `{{floor(varName)}}`                   |
 | ceil()        | Rounds up the given value to the nearest integer value.                                         | `{{ceil(varName)}}`                    |
 | round()       | Rounds the given value to the nearest integer value.                                            | `{{round(varName)}}`                   |
