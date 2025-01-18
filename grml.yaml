@@ -11,11 +11,11 @@
 #    This file is designed to run with grml to simplify various tasks.
 #    Head over to https://github.com/desertbit/grml, get / compile and setup grml.
 #    Afterwards you can use these tasks.
-version: 2
+version: 3
 project: fastplate
 
 env:
-    VERSION:  v1.1.4
+    VERSION:  v1.1.5
     BIN_NAME: fastplate
     PKG_DIR: internal/interpreter
     DOCKER_DIR: ${ROOT}/docker

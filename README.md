@@ -17,6 +17,9 @@ You can pass the listed arguments / options down below.
 | -in {FilePath}  | The input path to complete.                                                                    |
 | -out {FilePath} | The output path for the completed template(s).                                                 |
 | -var {FilePath} | The optional variable file path for unscoped variables.                                        |
+| -blacklist      | Regex pattern(s) to describe which files should not be interpreted.                            |
+| -whitelist      | Regex pattern(s) to describe which files should be interpreted .                               |
+| -verbose        | Enables the verbose print option.                                                              |
 | -no-stats       | Disable stats printing.                                                                        |
 | -indent         | Enable indention. Spaces / tabs in front of `import` statements will be used for the partials. |
 | -crlf           | Split and join contents by CRLF (\r\n) instead of LF (\n).                                     |

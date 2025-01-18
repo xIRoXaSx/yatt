@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -24,21 +26,24 @@ type Interpreter struct {
 }
 
 type Options struct {
-	InPath       string
-	OutPath      string
-	VarFilePaths VarFilePaths
-	Indent       bool
-	UseCRLF      bool
-	NoStats      bool
+	InPath        string
+	OutPath       string
+	FileWhitelist MultiString
+	FileBlacklist MultiString
+	VarFilePaths  MultiString
+	Indent        bool
+	UseCRLF       bool
+	NoStats       bool
+	Verbose       bool
 }
 
-type VarFilePaths []string
+type MultiString []string
 
-func (vp *VarFilePaths) String() string {
+func (vp *MultiString) String() string {
 	return strings.Join(*vp, " ")
 }
 
-func (vp *VarFilePaths) Set(v string) (err error) {
+func (vp *MultiString) Set(v string) (err error) {
 	*vp = append(*vp, v)
 	return
 }
@@ -183,11 +188,6 @@ func (i *Interpreter) runDirMode() (err error) {
 			return nil
 		}
 
-		// Write to the buffer to ensure that files don't get partially written.
-		err = i.interpretFile(inPath, nil)
-		if err != nil {
-			return err
-		}
 		out, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 		if err != nil {
 			return err
@@ -198,6 +198,20 @@ func (i *Interpreter) runDirMode() (err error) {
 				err = cErr
 			}
 		}()
+
+		isRaw, err := i.rawCopyOnListMatch(inPath, out)
+		if err != nil {
+			return err
+		}
+		if isRaw {
+			return nil
+		}
+
+		// Write to the buffer to ensure that files don't get partially written.
+		err = i.interpretFile(inPath, nil)
+		if err != nil {
+			return err
+		}
 
 		// Write buffer to the file and cut last new line.
 		_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
@@ -330,6 +344,75 @@ func (i *Interpreter) matchedImportPrefix(line []byte) []byte {
 		}
 	}
 	return nil
+}
+
+func (i *Interpreter) rawCopyOnListMatch(inPath string, out io.Writer) (isRaw bool, err error) {
+	if i.opts == nil {
+		return
+	}
+
+	writeTo := func(inPath string, out io.Writer) (err error) {
+		var b []byte
+		b, err = os.ReadFile(inPath)
+		if err != nil {
+			return
+		}
+
+		// Write file content to the output.
+		_, err = out.Write(b)
+		if err != nil {
+			return
+		}
+		return
+	}
+
+	if i.matchedBlacklist(inPath) {
+		log.Debug().Str("file", inPath).Msg("matched blacklist, plain copy")
+		isRaw = true
+		err = writeTo(inPath, out)
+		return
+	}
+
+	if i.matchedWhitelist(inPath) {
+		return
+	}
+
+	log.Debug().Str("file", inPath).Msg("does not match whitelist, plain copy")
+	isRaw = true
+	err = writeTo(inPath, out)
+	return
+}
+
+func (i *Interpreter) matchedBlacklist(v string) (matched bool) {
+	if i.opts == nil {
+		return
+	}
+
+	for _, f := range i.opts.FileBlacklist {
+		reg := regexp.MustCompile(f)
+		m := reg.MatchString(v)
+		if m {
+			return true
+		}
+	}
+
+	return
+}
+
+func (i *Interpreter) matchedWhitelist(v string) (matched bool) {
+	if i.opts == nil {
+		return
+	}
+
+	for _, f := range i.opts.FileWhitelist {
+		reg := regexp.MustCompile(f)
+		m := reg.MatchString(v)
+		if m {
+			return true
+		}
+	}
+
+	return
 }
 
 func leadingIndents(line []byte) (s []byte) {
