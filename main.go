@@ -15,7 +15,10 @@ import (
 
 func parseFlags() (a interpreter.Options) {
 	flag.BoolVar(&a.Indent, "indent", false, "whether to retain indention or not")
+	flag.Var(&a.FileBlacklist, "blacklist", "regex to describe which files should not be interpreted")
+	flag.Var(&a.FileWhitelist, "whitelist", "regex to describe which files should be interpreted")
 	flag.BoolVar(&a.NoStats, "no-stats", false, "do not print stats at the end of the execution")
+	flag.BoolVar(&a.Verbose, "verbose", false, "print verbosely")
 	flag.StringVar(&a.InPath, "in", "", "the root path")
 	flag.StringVar(&a.OutPath, "out", "", "the output path. If not used, in will be overwritten")
 	flag.BoolVar(&a.UseCRLF, "crlf", false, "whether to split lines by \\r\\n or \\n")
@@ -53,6 +56,11 @@ func main() {
 
 	opts.InPath = filepath.Clean(opts.InPath)
 	opts.OutPath = filepath.Clean(opts.OutPath)
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if opts.Verbose {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 
 	ip := interpreter.New(&opts)
 	err := ip.Start()
