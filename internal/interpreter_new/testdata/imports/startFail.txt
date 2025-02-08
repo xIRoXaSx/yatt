@@ -1,0 +1,5 @@
+Hello from from startFail.txt!
+
+    # fastplate import ./testdata/imports/myTestImportFail.txt
+
+End of startFail.txt

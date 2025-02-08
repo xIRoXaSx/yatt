@@ -1,4 +1,6 @@
 #!/bin/bash
+apt update && apt install -y zip
+
 cd /data
 os=("windows" "linux" "darwin" "freebsd" "openbsd" "windows")
 arch=("386" "amd64" "arm" "arm64")
@@ -16,9 +18,9 @@ for o in "${os[@]}" ; do
 
     echo "Building ${o}/${a}..."
     out="${binName}${ext}"
-    CGO_ENABLED=0 GOOS=${o} GOARCH=${a} go build -ldflags "-w -extldflags '-static'" -o "/work/${out}"
+    CGO_ENABLED=0 GOOS=${o} GOARCH=${a} go build -buildvcs=false -ldflags "-w -extldflags '-static'" -o "/work/${out}"
     echo "Zipping..."
-    zip -j "/build/${binName}-v${VERSION}_${o}_${a}.zip" "/work/${out}"
+    zip -j "/build/${binName}-${VERSION}_${o}_${a}.zip" "/work/${out}"
     echo "---"
   done
 done

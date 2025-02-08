@@ -1,11 +1,11 @@
 package common
 
-type Variable struct {
+type variable struct {
 	name  string
 	value string
 }
 
-type Var interface {
+type Variable interface {
 	Name() string
 	Value() string
 }
@@ -18,14 +18,14 @@ func TemplateEnd() []byte {
 	return []byte("}}")
 }
 
-func (v Variable) Name() string {
+func (v variable) Name() string {
 	return v.name
 }
 
-func (v Variable) Value() string {
+func (v variable) Value() string {
 	return v.value
 }
 
-func NewVar(name, value string) Var {
-	return Variable{name: name, value: value}
+func NewVar(name, value string) Variable {
+	return variable{name: name, value: value}
 }
