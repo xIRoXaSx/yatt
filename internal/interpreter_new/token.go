@@ -23,7 +23,7 @@ const (
 
 func (i *Interpreter) preprocessorState(fileName string) (t recurringToken) {
 	// Line does not contain one of the required prefixes.
-	if i.state.ignoreIndex[fileName] {
+	if i.state.ignoreIndex[fileName] == ignoreStateOpen {
 		return recurringTokenIgnore
 	} else if i.state.foreachIndex[fileName] != 0 {
 		return recurringTokenForeach
@@ -87,7 +87,138 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, indentParent
 }
 
 func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
-	// TODO: Implementation / refactor.
+	templateStart := templateStartBytes
+	templateEnd := templateEndBytes
+	ret = line
+	tokens := bytes.Split(line, templateStart)
+	if len(tokens) == 1 {
+		// Nothing needs to be resolved.
+		return
+	}
+
+	for _, token := range tokens {
+		match := bytes.Split(token, templateEnd)
+		if len(match) == 1 {
+			continue
+		}
+
+		// Resolve functions and variables.
+		// If no matched variable is found, try to find an global var.
+		for _, m := range match {
+			if len(m) == 0 {
+				continue
+			}
+
+			fncName, args := i.unwrapFunc(m)
+			if len(fncName) == 0 {
+				// No function found, try to lookup and replace variable.
+				v := i.state.varLookup(fileName, string(m))
+				if v.Value() == "" {
+					continue
+				}
+
+				ret = replaceVar(ret, m, []byte(v.Value()))
+				continue
+			}
+
+			// Check function's args for variables.
+			varsFromArgs := make([]variable, 0)
+			for j := range args {
+				v := i.state.varLookup(fileName, string(args[j]))
+				if v.Name() == "" {
+					// For some functions, numbers are also used. Add them.
+					val := string(args[j])
+					v = variable{name: val, value: val}
+				}
+				varsFromArgs = append(varsFromArgs, v)
+			}
+			if len(varsFromArgs) == 0 {
+				continue
+			}
+
+			var remappedArgs [][]byte
+			fncNameStr := fncName.string()
+			remappedArgs, err = remapArgsWithVariables(fncNameStr, varsFromArgs, varsFromArgs)
+			if err != nil {
+				return
+			}
+
+			var mod []byte
+			mod, err = i.executeFunction(fncName, fileName, remappedArgs, additionalVars)
+			if err != nil {
+				return
+			}
+			ret = replaceVar(ret, m, mod)
+		}
+	}
+
+	if len(bytes.Split(ret, templateStart)) > 1 && !bytes.Equal(ret, line) {
+		ret, err = i.resolve(fileName, ret, additionalVars)
+		if err != nil {
+			return
+		}
+	}
+
+	for _, v := range additionalVars {
+		ret = replaceVar(line, []byte(v.Name()), []byte(v.Value()))
+	}
+	return
+}
+
+type interpreterFunc []byte
+
+func (i interpreterFunc) string() string {
+	return string(i)
+}
+
+// unwrapFunc gets the function's name and its args from the given byte slice.
+func (i *Interpreter) unwrapFunc(b []byte) (fncName interpreterFunc, args [][]byte) {
+	args = make([][]byte, 0)
+	fnc := bytes.SplitN(bytes.TrimSpace(b), []byte("("), 2)
+	if len(fnc) == 1 {
+		return
+	}
+
+	fncName = bytes.TrimSpace(fnc[0])
+	fnc[1] = bytes.Split(fnc[1], []byte(")"))[0]
+	args = bytes.Split(fnc[1], []byte(","))
+	for j := range args {
+		args[j] = bytes.TrimSpace(args[j])
+	}
+	return
+}
+
+//
+// Helper functions.
+//
+
+func replaceVar(line, varName, replacement []byte) []byte {
+	matched := bytes.Join([][]byte{templateStartBytes, varName, templateEndBytes}, nil)
+	return bytes.ReplaceAll(line, matched, replacement)
+}
+
+func remapArgsWithVariables(fncNameStr string, varsFromArgs, additionalVars []variable) (values [][]byte, err error) {
+	values = make([][]byte, len(varsFromArgs))
+
+additionalVar:
+	for idx := range varsFromArgs {
+		for _, av := range additionalVars {
+			// Overwrite variable value if the names match.
+			// This may be the case for "foreach"-variables.
+			if varsFromArgs[idx].Name() == av.Name() {
+				values[idx] = []byte(av.Value())
+				continue additionalVar
+			}
+		}
+
+		// Keep variable name intact so the function call can retrieve the var's value.
+		if fncNameStr == "var" {
+			values[idx] = []byte(varsFromArgs[idx].Name())
+			continue
+		}
+		values[idx] = []byte(varsFromArgs[idx].Value())
+	}
+
 	return
 }
 

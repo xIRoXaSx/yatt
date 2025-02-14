@@ -17,8 +17,15 @@ import (
 )
 
 const (
-	prefixName  = "fastplate"
-	varFileName = "fastplate.var"
+	templateStart = "{{"
+	templateEnd   = "}}"
+	prefixName    = "fastplate"
+	varFileName   = "fastplate.var"
+)
+
+var (
+	templateStartBytes = []byte(templateStart)
+	templateEndBytes   = []byte(templateEnd)
 )
 
 type Interpreter struct {
@@ -118,11 +125,13 @@ func (i *Interpreter) interpret(file interpreterFile, indentParent []byte) (err 
 	// Always ensure to close the file's rc.
 	defer func() {
 		cErr := file.rc.Close()
-		if err == nil {
-			err = cErr
-			return
+		if cErr != nil {
+			if err == nil {
+				err = cErr
+				return
+			}
+			i.l.Err(cErr).Str("file", file.name).Msg("closing file reader")
 		}
-		i.l.Err(cErr).Str("file", file.name).Msg("closing file reader")
 	}()
 
 	var (
@@ -198,13 +207,13 @@ func (i *Interpreter) initScopedVars() {
 				continue
 			}
 			// Skip the var declaration keyword.
-			i.registerUnscopedVar(strings.TrimSuffix(filepath.Base(vf), filepath.Ext(vf)), split[1:])
+			i.registerGlobalVar(strings.TrimSuffix(filepath.Base(vf), filepath.Ext(vf)), split[1:])
 		}
 	}
 }
 
-// registerUnscopedVar parses and registers an unscoped variable from the given args.
-func (i *Interpreter) registerUnscopedVar(varFile string, tokens [][]byte) {
+// registerGlobalVar parses and registers an unscoped variable from the given args.
+func (i *Interpreter) registerGlobalVar(varFile string, tokens [][]byte) {
 	variable := variableFromArgs(tokens)
 	i.state.registerGlobalVar(varFile, variable)
 }
@@ -249,8 +258,10 @@ func (i *Interpreter) writeInterpretedFile(inPath, outPath string, buf *bytes.Bu
 		return
 	}
 
-	// Write buffer to the file and cut last new line.
-	_, err = out.Write(buf.Bytes()[:buf.Len()-1])
+	if buf.Len() > 0 {
+		// Write buffer to the file and cut last new line.
+		_, err = out.Write(buf.Bytes()[:buf.Len()-1])
+	}
 	return
 }
 

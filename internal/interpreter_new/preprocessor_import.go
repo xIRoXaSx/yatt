@@ -18,21 +18,13 @@ func (i *Interpreter) importPath(pd *preprocessorDirective) (err error) {
 		return
 	}
 
+	// Open the import file.
+	// The interpret method will close it afterwards.
 	path := filepath.Clean(string(pd.args[0]))
 	importFile, err := os.Open(path)
 	if err != nil {
 		return
 	}
-	defer func() {
-		cErr := importFile.Close()
-		if cErr != nil {
-			if err == nil {
-				err = cErr
-				return
-			}
-			i.l.Err(cErr).Str("path", path).Msg("closing import file on defer")
-		}
-	}()
 
 	interFile := interpreterFile{
 		name: filepath.Clean(pd.fileName),

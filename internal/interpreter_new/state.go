@@ -18,7 +18,7 @@ type state struct {
 	*sync.Mutex
 }
 
-type ignoreIndexes map[string]bool
+type ignoreIndexes map[string]ignoreState
 
 type foreachIndexes map[string]int
 
@@ -30,6 +30,15 @@ type variableRegistry struct {
 }
 
 type vars []common.Variable
+
+type ignoreState uint8
+
+const (
+	ignoreStateOpen ignoreState = iota
+	ignoreStateClose
+
+	variableRegistryGlobalRegisterGlobal = "global"
+)
 
 func (s *state) registerGlobalVar(register string, newVar common.Variable) {
 	s.varRegistryGlobal.Lock()
@@ -46,4 +55,30 @@ func (s *state) registerGlobalVar(register string, newVar common.Variable) {
 	}
 
 	s.varRegistryGlobal.entries[register] = append(s.varRegistryGlobal.entries[register], newVar)
+}
+
+func (s *state) varLookup(file, name string) (v variable) {
+	v = s.varLookupLocal(file, name)
+	if v.Name() == "" {
+		v = s.varLookupGlobal(name)
+	}
+	return
+}
+
+func (s *state) varLookupGlobal(name string) (v variable) {
+	for _, v := range s.varRegistryGlobal.entries[variableRegistryGlobalRegisterGlobal] {
+		if v.Name() == name {
+			return v.(variable)
+		}
+	}
+	return variable{}
+}
+
+func (s *state) varLookupLocal(register, name string) (v variable) {
+	for _, v := range s.varRegistryLocal.entries[register] {
+		if v.Name() == name {
+			return v.(variable)
+		}
+	}
+	return variable{}
 }
