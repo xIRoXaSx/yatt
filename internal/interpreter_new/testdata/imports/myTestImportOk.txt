@@ -1,5 +1,3 @@
 Hello from from myTestImportOk.txt!
-
     # fastplate import ./testdata/imports/nestedImportOk.txt
-
 End of myTestImportOk.txt

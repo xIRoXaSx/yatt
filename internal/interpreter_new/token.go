@@ -32,9 +32,9 @@ func (i *Interpreter) preprocessorState(fileName string) (t recurringToken) {
 	return
 }
 
-func (i *Interpreter) searchTokensAndExecute(fileName string, line, indentParent, indentLine []byte, buf io.Writer, lineNum int) (err error) {
+func (i *Interpreter) searchTokensAndExecute(fileName string, line, currentLineIndent, parentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
 	lineDisplayNum := lineNum + 1
-	lineNoIndent := line[len(indentLine):]
+	lineNoIndent := line[len(currentLineIndent):]
 	prefix := i.matchedPrefixToken(lineNoIndent)
 	if len(prefix) > 0 {
 		// Trim the prefix and check against internal commands.
@@ -48,7 +48,7 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, indentParent
 			name:     string(split[0]),
 			fileName: filepath.Clean(fileName),
 			args:     split[1:],
-			indent:   indentParent,
+			indent:   append(currentLineIndent, parentLineIndent...),
 			buf:      &bytes.Buffer{},
 		}
 		err = i.preprocess(pd, lineDisplayNum)
@@ -62,6 +62,7 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, indentParent
 
 	switch i.preprocessorState(fileName) {
 	case recurringTokenIgnore:
+
 		// Currently moving inside a ignore block, skipping line...
 		return
 
@@ -76,7 +77,8 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, indentParent
 		if err != nil {
 			return
 		}
-		ret = append(ret, append(indentParent, indentLine...)...)
+		indents := append(parentLineIndent, currentLineIndent...)
+		ret = append(indents, ret...)
 		_, err = buf.Write(append(ret, i.lineEnding...))
 		if err != nil {
 			return
@@ -226,7 +228,7 @@ additionalVar:
 func getLeadingWhitespace(line []byte) (s []byte) {
 	for _, r := range line {
 		if r != ' ' && r != '\t' {
-			break
+			return
 		}
 		s = append(s, r)
 	}

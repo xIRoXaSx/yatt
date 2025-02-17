@@ -72,6 +72,8 @@ func New(opts *Options, l zerolog.Logger) (i *Interpreter) {
 }
 
 func (i *Interpreter) Start() (err error) {
+	i.opts.InPath = filepath.Clean(i.opts.InPath)
+
 	stat, err := os.Stat(i.opts.InPath)
 	if err != nil {
 		i.l.Fatal().Err(err).Msg("unable to stat input path")
@@ -121,7 +123,7 @@ func defaultPrefixTokens() []string {
 // interpret tries to interpret the scanned content of file.rc.
 // If the ReadCloser content contains available tokens, it tries to resolve them and writes it,
 // along with the prepended indentParent, to buf.
-func (i *Interpreter) interpret(file interpreterFile, indentParent []byte) (err error) {
+func (i *Interpreter) interpret(file interpreterFile, parentLineIndent []byte) (err error) {
 	// Always ensure to close the file's rc.
 	defer func() {
 		cErr := file.rc.Close()
@@ -147,13 +149,13 @@ func (i *Interpreter) interpret(file interpreterFile, indentParent []byte) (err 
 		}
 
 		line := scanner.Bytes()
-		indentLine := make([]byte, 0)
-		if len(indentParent) > 0 && i.opts.Indent {
+		currentLineIndent := make([]byte, 0)
+		if i.opts.Indent {
 			// Line indents are required, check current line indents.
-			indentLine = getLeadingWhitespace(line)
+			currentLineIndent = getLeadingWhitespace(line)
 		}
 
-		err = i.searchTokensAndExecute(file.name, line, indentParent, indentLine, file.writer, lineNum+1)
+		err = i.searchTokensAndExecute(file.name, line, currentLineIndent, parentLineIndent, file.writer, lineNum+1)
 		if err != nil {
 			return
 		}
@@ -218,7 +220,7 @@ func (i *Interpreter) registerGlobalVar(varFile string, tokens [][]byte) {
 	i.state.registerGlobalVar(varFile, variable)
 }
 
-func (i *Interpreter) writeInterpretedFile(inPath, outPath string, buf *bytes.Buffer) (err error) {
+func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {
 	out, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
 		return err
@@ -247,6 +249,7 @@ func (i *Interpreter) writeInterpretedFile(inPath, outPath string, buf *bytes.Bu
 		return
 	}
 
+	buf := &bytes.Buffer{}
 	interFile := interpreterFile{
 		name:   inPath,
 		rc:     inFile,

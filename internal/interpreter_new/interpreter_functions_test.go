@@ -16,6 +16,8 @@ import (
 const floatThreshold = 1e-9
 
 func TestFunctions(t *testing.T) {
+	t.Parallel()
+
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	i := New(&Options{NoStats: true}, l)
 

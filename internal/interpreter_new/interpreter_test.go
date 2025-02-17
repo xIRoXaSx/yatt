@@ -33,7 +33,18 @@ func TestInterpreterImport(t *testing.T) {
 	ip := New(&Options{
 		InPath:  filepath.Join(rootTestDir, "startOk.txt"),
 		OutPath: filepath.Join(rootTestDir, "bin", "finished.txt"),
+		Indent:  true,
 	}, l)
 	err := ip.Start()
 	r.NoError(t, err)
+}
+
+func TestInterpreterResolveNested(t *testing.T) {
+	t.Parallel()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	ip := New(&Options{}, l)
+	ret, err := ip.resolve("test.txt", []byte("test 123 {{add(1,2,{{mult(2,3)}})}}"), nil)
+	r.NoError(t, err)
+	r.Exactly(t, string(ret), "test 123 9")
 }

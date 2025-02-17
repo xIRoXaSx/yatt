@@ -66,6 +66,11 @@ commands:
                 -var="testdata/fastplate.var" \
                 -indent
 
+    test:
+        help: run the go tests
+        exec:
+            run_docker_test
+
     bench:
         help: run benchmarks
         deps:
@@ -89,9 +94,3 @@ commands:
                         -benchmem \
                         -bench="^\QBenchmarkFileWrites\E$" \
                         -run=^$github.com/xiroxasx/fastplate/interpreter
-
-    test:
-        help: run all tests
-        exec: |
-            cd "${PKG_DIR}"
-            go test ./

@@ -1,7 +1,6 @@
 package interpreter
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +15,6 @@ func (i *Interpreter) runDirMode(inPath, outPath string) (err error) {
 		return
 	}
 
-	buf := &bytes.Buffer{}
 	err = filepath.WalkDir(inPath, func(inPath string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -37,12 +35,11 @@ func (i *Interpreter) runDirMode(inPath, outPath string) (err error) {
 			return nil
 		}
 
-		err = i.writeInterpretedFile(inPath, dest, buf)
+		err = i.writeInterpretedFile(inPath, dest)
 		if err != nil {
 			return err
 		}
 
-		buf.Reset()
 		return nil
 	})
 	return

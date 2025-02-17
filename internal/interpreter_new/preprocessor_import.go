@@ -27,8 +27,9 @@ func (i *Interpreter) importPath(pd *preprocessorDirective) (err error) {
 	}
 
 	interFile := interpreterFile{
-		name: filepath.Clean(pd.fileName),
-		rc:   importFile,
+		name:   filepath.Clean(pd.fileName),
+		rc:     importFile,
+		writer: pd.buf,
 	}
 	err = i.interpret(interFile, pd.indent)
 	if err != nil {

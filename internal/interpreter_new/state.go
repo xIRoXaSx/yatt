@@ -34,8 +34,8 @@ type vars []common.Variable
 type ignoreState uint8
 
 const (
-	ignoreStateOpen ignoreState = iota
-	ignoreStateClose
+	ignoreStateClose ignoreState = iota
+	ignoreStateOpen
 
 	variableRegistryGlobalRegisterGlobal = "global"
 )
