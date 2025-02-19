@@ -10,19 +10,31 @@ import (
 )
 
 const (
-	functionNameAdd   = "add"
-	functionNameSub   = "sub"
-	functionNameMult  = "mult"
-	functionNameDiv   = "div"
-	functionNamePow   = "pow"
-	functionNameSqrt  = "sqrt"
-	functionNameRound = "round"
-	functionNameCeil  = "ceil"
-	functionNameFloor = "floor"
-	functionNameFixed = "fixed"
-	functionNameMax   = "max"
-	functionNameMin   = "min"
-	functionNameMod   = "mod"
+	functionNameCryptSHA1   = "sha1"
+	functionNameCryptSHA256 = "sha256"
+	functionNameCryptSHA512 = "sha512"
+	functionNameCryptMD5    = "md5"
+
+	functionNameInternalVar = "var"
+
+	functionNameMathAdd   = "add"
+	functionNameMathSub   = "sub"
+	functionNameMathMult  = "mult"
+	functionNameMathDiv   = "div"
+	functionNameMathPow   = "pow"
+	functionNameMathSqrt  = "sqrt"
+	functionNameMathRound = "round"
+	functionNameMathCeil  = "ceil"
+	functionNameMathFloor = "floor"
+	functionNameMathFixed = "fixed"
+	functionNameMathMax   = "max"
+	functionNameMathMin   = "min"
+	functionNameMathMod   = "mod"
+
+	functionNameStringSplit   = "split"
+	functionNameStringRepeat  = "repeat"
+	functionNameStringReplace = "replace"
+	functionNameStringLength  = "length"
 )
 
 func (i *Interpreter) executeFunction(funcName interpreterFunc, fileName string, args [][]byte, additionalVars []common.Variable) (ret []byte, err error) {
@@ -33,33 +45,62 @@ func (i *Interpreter) executeFunction(funcName interpreterFunc, fileName string,
 	}()
 	switch strings.ToLower(funcName.string()) {
 
+	// Crypt.
+	case functionNameCryptSHA1:
+		return functions.SHA1(args)
+	case functionNameCryptSHA256:
+		return functions.SHA256(args)
+	case functionNameCryptSHA512:
+		return functions.SHA512(args)
+	case functionNameCryptMD5:
+		return functions.MD5(args)
+
+	// Internal.
+	case functionNameInternalVar:
+		return functions.Var(fileName, args, additionalVars, func(name, value []byte) error {
+			return i.setLocalVar(fileName, [][]byte{name, {'='}, value})
+		})
+
 	// Math.
-	case functionNameAdd:
+	case functionNameMathAdd:
 		return functions.Add(args)
-	case functionNameSub:
+	case functionNameMathSub:
 		return functions.Sub(args)
-	case functionNameMult:
+	case functionNameMathMult:
 		return functions.Mult(args)
-	case functionNameDiv:
+	case functionNameMathDiv:
 		return functions.Div(args)
-	case functionNamePow:
+	case functionNameMathPow:
 		return functions.Pow(args)
-	case functionNameSqrt:
+	case functionNameMathSqrt:
 		return functions.Sqrt(args)
-	case functionNameRound:
+	case functionNameMathRound:
 		return functions.Round(args)
-	case functionNameCeil:
+	case functionNameMathCeil:
 		return functions.Ceil(args)
-	case functionNameFloor:
+	case functionNameMathFloor:
 		return functions.Floor(args)
-	case functionNameFixed:
+	case functionNameMathFixed:
 		return functions.Fixed(args)
-	case functionNameMax:
+	case functionNameMathMax:
 		return functions.Max(args)
-	case functionNameMin:
+	case functionNameMathMin:
 		return functions.Min(args)
-	case functionNameMod:
+	case functionNameMathMod:
 		return functions.Mod(args)
+
+	// String.
+	case functionNameStringSplit:
+		return functions.Split(args)
+	case functionNameStringRepeat:
+		return functions.Repeat(args)
+	case functionNameStringReplace:
+		return functions.Replace(args)
+	case functionNameStringLength:
+		return functions.Length(args, len(i.state.varRegistryGlobal.entries), func(name string) int {
+			return len(i.state.varRegistryLocal.entries[strings.ToLower(name)])
+		})
+
 	default:
 		err = errors.New("unknown function")
 		return

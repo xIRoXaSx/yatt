@@ -31,142 +31,142 @@ func TestFunctions(t *testing.T) {
 	}
 	tests := []test{
 		{
-			funcName: functionNameAdd,
+			funcName: functionNameMathAdd,
 			args:     []string{"2", "3", "4"},
 			expected: 9,
 		},
 		{
-			funcName: functionNameAdd,
+			funcName: functionNameMathAdd,
 			args:     []string{"  2  ", "  3  ", "  -4  "},
 			expected: 1,
 		},
 		{
-			funcName: functionNameSub,
+			funcName: functionNameMathSub,
 			args:     []string{"2", "3", "4"},
 			expected: -5,
 		},
 		{
-			funcName: functionNameSub,
+			funcName: functionNameMathSub,
 			args:     []string{"  2  ", "  3  ", "  -4  "},
 			expected: 3,
 		},
 		{
-			funcName: functionNameMult,
+			funcName: functionNameMathMult,
 			args:     []string{"2", "3", "4"},
 			expected: 24,
 		},
 		// 5.
 		{
-			funcName: functionNameMult,
+			funcName: functionNameMathMult,
 			args:     []string{"  2  ", "  3  ", "  -4  "},
 			expected: -24,
 		},
 		{
-			funcName: functionNameDiv,
+			funcName: functionNameMathDiv,
 			args:     []string{"2", "3", "4"},
 			expected: 0.166666667,
 		},
 		{
-			funcName: functionNameDiv,
+			funcName: functionNameMathDiv,
 			args:     []string{"  2  ", "  3  ", "  -4  "},
 			expected: -0.166666667,
 		},
 		{
-			funcName: functionNamePow,
+			funcName: functionNameMathPow,
 			args:     []string{"3", "4"},
 			expected: 81,
 		},
 		{
-			funcName: functionNamePow,
+			funcName: functionNameMathPow,
 			args:     []string{"  3  ", "  -4  "},
 			expected: 0.012345679,
 		},
 		// 10.
 		{
-			funcName: functionNameSqrt,
+			funcName: functionNameMathSqrt,
 			args:     []string{"3"},
 			expected: 1.73205080757,
 		},
 		{
-			funcName: functionNameSqrt,
+			funcName: functionNameMathSqrt,
 			args:     []string{"  -3  "},
 			expected: math.NaN(),
 		},
 		{
-			funcName: functionNameRound,
+			funcName: functionNameMathRound,
 			args:     []string{"1.73205080757"},
 			expected: 2,
 		},
 		{
-			funcName: functionNameRound,
+			funcName: functionNameMathRound,
 			args:     []string{"  -1.73205080757  "},
 			expected: -2,
 		},
 		{
-			funcName: functionNameCeil,
+			funcName: functionNameMathCeil,
 			args:     []string{"1.23205080757"},
 			expected: 2,
 		},
 		// 15.
 		{
-			funcName: functionNameCeil,
+			funcName: functionNameMathCeil,
 			args:     []string{"  -1.23205080757  "},
 			expected: -1,
 		},
 		{
-			funcName: functionNameFloor,
+			funcName: functionNameMathFloor,
 			args:     []string{"1.73205080757"},
 			expected: 1,
 		},
 		{
-			funcName: functionNameFloor,
+			funcName: functionNameMathFloor,
 			args:     []string{"  -1.73205080757  "},
 			expected: -2,
 		},
 		{
-			funcName: functionNameFixed,
+			funcName: functionNameMathFixed,
 			args:     []string{"1.73205080757", "  5  "},
 			expected: 1.73205,
 		},
 		{
-			funcName: functionNameFixed,
+			funcName: functionNameMathFixed,
 			args:     []string{"  -1.73205080757  ", "  5  "},
 			expected: -1.73205,
 		},
 		// 20.
 		{
-			funcName: functionNameMax,
+			funcName: functionNameMathMax,
 			args:     []string{"2", "3", "4"},
 			expected: 4,
 		},
 		{
-			funcName: functionNameMax,
+			funcName: functionNameMathMax,
 			args:     []string{"  2  ", "  3  ", "  -4  "},
 			expected: 3,
 		},
 		{
-			funcName: functionNameMin,
+			funcName: functionNameMathMin,
 			args:     []string{"2", "3", "4"},
 			expected: 2,
 		},
 		{
-			funcName: functionNameMin,
+			funcName: functionNameMathMin,
 			args:     []string{"  2  ", "  3  ", "  -4  "},
 			expected: -4,
 		},
 		{
-			funcName: functionNameMod,
+			funcName: functionNameMathMod,
 			args:     []string{"2", "3"},
 			expected: 2,
 		},
 		// 25.
 		{
-			funcName: functionNameMod,
+			funcName: functionNameMathMod,
 			args:     []string{"  2  ", "  -4  "},
 			expected: 2,
 		},
 		{
-			funcName: functionNameAdd,
+			funcName: functionNameMathAdd,
 			args:     []string{},
 			fail:     true,
 		},
