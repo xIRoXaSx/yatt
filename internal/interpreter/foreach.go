@@ -71,7 +71,7 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 		fe.buf.mv(-1)
 	}
 
-	loopLines := func(varIdx, feIdx int, v common.Var, buf foreachBuffer) (err error) {
+	loopLines := func(varIdx, feIdx int, v common.Variable, buf foreachBuffer) (err error) {
 		// Loops may be nested directly inside each other.
 		// If this happens and no other lines have been given, the line's length is 0.
 		if buf.lines == nil && len(buf.startNext) == 1 {
@@ -178,8 +178,8 @@ func (i *Interpreter) evaluateForeach(fe foreach, file string) (err error) {
 }
 
 // resolveForeach resolves a foreach variable to its corresponding value.
-func (i *Interpreter) resolveForeach(varIdx, feIdx int, v common.Var, file string, line []byte) (ret []byte, err error) {
-	feVars := []common.Var{
+func (i *Interpreter) resolveForeach(varIdx, feIdx int, v common.Variable, file string, line []byte) (ret []byte, err error) {
+	feVars := []common.Variable{
 		common.NewVar(foreachValue, ""),
 		common.NewVar(foreachIndex, fmt.Sprint(feIdx)),
 		common.NewVar(foreachName, v.Name()),

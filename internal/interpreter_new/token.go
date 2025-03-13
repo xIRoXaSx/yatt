@@ -18,15 +18,12 @@ type recurringToken uint8
 
 const (
 	recurringTokenIgnore recurringToken = iota + 1
-	recurringTokenForeach
 )
 
 func (i *Interpreter) preprocessorState(fileName string) (t recurringToken) {
 	// Line does not contain one of the required prefixes.
 	if i.state.ignoreIndex[fileName] == ignoreStateOpen {
 		return recurringTokenIgnore
-	} else if i.state.foreachIndex[fileName] != 0 {
-		return recurringTokenForeach
 	}
 
 	return
@@ -51,7 +48,9 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, currentLineI
 			indent:   append(currentLineIndent, parentLineIndent...),
 			buf:      &bytes.Buffer{},
 		}
-		err = i.preprocess(pd, lineDisplayNum)
+		err = i.state.preprocess(pd, lineDisplayNum, func(pd *preprocessorDirective) error {
+			return i.importPath(pd)
+		})
 		if err != nil {
 			return
 		}
@@ -62,18 +61,13 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, currentLineI
 
 	switch i.preprocessorState(fileName) {
 	case recurringTokenIgnore:
-
 		// Currently moving inside a ignore block, skipping line...
-		return
-
-	case recurringTokenForeach:
-		// TODO: Implementation.
 		return
 
 	default:
 		// No prefix found, try to resolve variables and functions if there are any.
 		var ret []byte
-		ret, err = i.resolve(fileName, line, nil)
+		ret, err = i.state.resolve(fileName, line, nil)
 		if err != nil {
 			return
 		}
@@ -88,7 +82,7 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, currentLineI
 	return
 }
 
-func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
+func (s *state) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
 	templateStart := templateStartBytes
 	templateEnd := templateEndBytes
 	ret = line
@@ -111,10 +105,10 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []com
 				continue
 			}
 
-			fncName, args := i.unwrapFunc(m)
+			fncName, args := unwrapFunc(m)
 			if len(fncName) == 0 {
 				// No function found, try to lookup and replace variable.
-				v := i.state.varLookup(fileName, string(m))
+				v := s.varLookup(fileName, string(m))
 				if v.Value() == "" {
 					continue
 				}
@@ -124,9 +118,9 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []com
 			}
 
 			// Check function's args for variables.
-			varsFromArgs := make([]variable, 0)
+			varsFromArgs := make([]common.Variable, 0)
 			for j := range args {
-				v := i.state.varLookup(fileName, string(args[j]))
+				v := s.varLookup(fileName, string(args[j]))
 				if v.Name() == "" {
 					// For some functions, numbers are also used. Add them.
 					val := string(args[j])
@@ -140,13 +134,13 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []com
 
 			var remappedArgs [][]byte
 			fncNameStr := fncName.string()
-			remappedArgs, err = remapArgsWithVariables(fncNameStr, varsFromArgs, varsFromArgs)
+			remappedArgs, err = remapArgsWithVariables(fncNameStr, varsFromArgs, additionalVars)
 			if err != nil {
 				return
 			}
 
 			var mod []byte
-			mod, err = i.executeFunction(fncName, fileName, remappedArgs, additionalVars)
+			mod, err = s.executeFunction(fncName, fileName, remappedArgs, additionalVars)
 			if err != nil {
 				return
 			}
@@ -155,7 +149,7 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []com
 	}
 
 	if len(bytes.Split(ret, templateStart)) > 1 && !bytes.Equal(ret, line) {
-		ret, err = i.resolve(fileName, ret, additionalVars)
+		ret, err = s.resolve(fileName, ret, additionalVars)
 		if err != nil {
 			return
 		}
@@ -174,7 +168,7 @@ func (i interpreterFunc) string() string {
 }
 
 // unwrapFunc gets the function's name and its args from the given byte slice.
-func (i *Interpreter) unwrapFunc(b []byte) (fncName interpreterFunc, args [][]byte) {
+func unwrapFunc(b []byte) (fncName interpreterFunc, args [][]byte) {
 	args = make([][]byte, 0)
 	fnc := bytes.SplitN(bytes.TrimSpace(b), []byte("("), 2)
 	if len(fnc) == 1 {
@@ -199,7 +193,7 @@ func replaceVar(line, varName, replacement []byte) []byte {
 	return bytes.ReplaceAll(line, matched, replacement)
 }
 
-func remapArgsWithVariables(fncNameStr string, varsFromArgs, additionalVars []variable) (values [][]byte, err error) {
+func remapArgsWithVariables(fncNameStr string, varsFromArgs, additionalVars []common.Variable) (values [][]byte, err error) {
 	values = make([][]byte, len(varsFromArgs))
 
 additionalVar:
@@ -221,16 +215,5 @@ additionalVar:
 		values[idx] = []byte(varsFromArgs[idx].Value())
 	}
 
-	return
-}
-
-// getLeadingWhitespace returns all leading whitespace characters.
-func getLeadingWhitespace(line []byte) (s []byte) {
-	for _, r := range line {
-		if r != ' ' && r != '\t' {
-			return
-		}
-		s = append(s, r)
-	}
 	return
 }

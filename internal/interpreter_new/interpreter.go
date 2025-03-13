@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 const (
@@ -56,11 +56,18 @@ func New(opts *Options, l zerolog.Logger) (i *Interpreter) {
 		l:          l,
 		state: &state{
 			ignoreIndex:  make(ignoreIndexes, 0),
-			foreach:      sync.Map{},
-			buf:          &bytes.Buffer{},
+			foreachBuff:  newForeachBufferStack(""),
 			Mutex:        &sync.Mutex{},
 			depsResolver: newDependencyResolver(),
 			varRegistryLocal: variableRegistry{
+				entries: make(map[string]vars, 0),
+				Mutex:   &sync.Mutex{},
+			},
+			varRegistryGlobal: variableRegistry{
+				entries: make(map[string]vars, 0),
+				Mutex:   &sync.Mutex{},
+			},
+			varRegistryGlobalFile: variableRegistry{
 				entries: make(map[string]vars, 0),
 				Mutex:   &sync.Mutex{},
 			},
@@ -87,7 +94,7 @@ func (i *Interpreter) Start() (err error) {
 
 		elapsed := time.Since(start)
 		if !i.opts.NoStats {
-			fmt.Println("Execution took", elapsed)
+			i.l.Info().Dur("elapsed", elapsed).Msg("finished")
 		}
 	}()
 
@@ -152,7 +159,7 @@ func (i *Interpreter) interpret(file interpreterFile, parentLineIndent []byte) (
 		currentLineIndent := make([]byte, 0)
 		if i.opts.Indent {
 			// Line indents are required, check current line indents.
-			currentLineIndent = getLeadingWhitespace(line)
+			currentLineIndent = common.GetLeadingWhitespace(line)
 		}
 
 		err = i.searchTokensAndExecute(file.name, line, currentLineIndent, parentLineIndent, file.writer, lineNum+1)
@@ -209,15 +216,15 @@ func (i *Interpreter) initScopedVars() {
 				continue
 			}
 			// Skip the var declaration keyword.
-			i.registerGlobalVar(strings.TrimSuffix(filepath.Base(vf), filepath.Ext(vf)), split[1:])
+			i.setGlobalVar(split[1:])
 		}
 	}
 }
 
-// registerGlobalVar parses and registers an unscoped variable from the given args.
-func (i *Interpreter) registerGlobalVar(varFile string, tokens [][]byte) {
+// setGlobalVar parses and registers an unscoped variable from the given args.
+func (i *Interpreter) setGlobalVar(tokens [][]byte) {
 	variable := variableFromArgs(tokens)
-	i.state.registerGlobalVar(varFile, variable)
+	i.state.setGlobalVar(variable)
 }
 
 func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {

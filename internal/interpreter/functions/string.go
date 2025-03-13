@@ -3,7 +3,11 @@ package functions
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 func Split(args [][]byte) (ret []byte, err error) {
@@ -47,5 +51,30 @@ func Replace(args [][]byte) (ret []byte, err error) {
 	}
 
 	ret = bytes.ReplaceAll(TrimQuotes(args[0]), TrimQuotes(args[1]), TrimQuotes(args[2]))
+	return
+}
+
+func Length(args [][]byte, unscopedVarsKey string, unscoped []common.Variable, scopedVarIndexLengthFn func(name string) int) (ret []byte, err error) {
+	if len(args) != 1 {
+		err = fmt.Errorf("exactly 1 arg expected")
+		return
+	}
+
+	var (
+		l    int
+		arg0 = args[0]
+	)
+	if bytes.HasPrefix(arg0, []byte(unscopedVarsKey)) {
+		varFile := strings.TrimPrefix(string(arg0), unscopedVarsKey+"_")
+		if varFile == unscopedVarsKey {
+			l = len(unscoped)
+		} else {
+			l = scopedVarIndexLengthFn(varFile)
+		}
+	} else {
+		l = len(arg0)
+	}
+	ret = []byte(strconv.Itoa(l))
+
 	return
 }

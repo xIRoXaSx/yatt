@@ -5,6 +5,11 @@ import (
 	"errors"
 )
 
+const (
+	variableGlobalKey     = "FASTPLATE_GLOBAL"
+	variableGlobalKeyFile = variableGlobalKey + "_"
+)
+
 var (
 	errEmptyVariableParameter = errors.New("variable name or value must not be empty")
 )
@@ -22,27 +27,6 @@ func (v variable) Name() string {
 // Implements the [common.Variable] interface.
 func (v variable) Value() string {
 	return v.value
-}
-
-// setLocalVar parses and sets a local variable from the given args.
-func (i *Interpreter) setLocalVar(scope string, args [][]byte) (err error) {
-	i.state.varRegistryLocal.Lock()
-	defer i.state.varRegistryLocal.Unlock()
-
-	v := variableFromArgs(args)
-	if v.Name() == "" || v.Value() == "" {
-		return errEmptyVariableParameter
-	}
-
-	for index, localVar := range i.state.varRegistryLocal.entries[scope] {
-		if localVar.Name() == v.Name() {
-			i.state.varRegistryLocal.entries[scope][index] = v
-			return
-		}
-	}
-
-	i.state.varRegistryLocal.entries[scope] = append(i.state.varRegistryLocal.entries[scope], v)
-	return
 }
 
 // variableFromArgs parses [variable] from the given args.

@@ -44,7 +44,7 @@ func TestInterpreterResolveNested(t *testing.T) {
 
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	ip := New(&Options{}, l)
-	ret, err := ip.resolve("test.txt", []byte("test 123 {{add(1,2,{{mult(2,3)}})}}"), nil)
+	ret, err := ip.state.resolve("test.txt", []byte("test 123 {{add(1,2,{{mult(2,3)}})}}"), nil)
 	r.NoError(t, err)
 	r.Exactly(t, string(ret), "test 123 9")
 }

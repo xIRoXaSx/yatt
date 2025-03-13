@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/xiroxasx/fastplate/internal/interpreter/commands"
 )
 
 const (
@@ -24,16 +26,10 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 
 	switch command {
 	case commandIgnore:
-		if len(args) != 1 {
-			return errors.New("exactly 1 arg expected, \"start\" or \"end\"")
-		}
-		i.ignore(file, string(args[0]))
+		return commands.Ignore(i, file, args)
 
 	case commandVar:
-		if len(args) < 2 {
-			return errors.New("expected a name and a value")
-		}
-		i.setScopedVar(file, args)
+		return commands.SetScopedVar(i, file, args)
 
 	case commandForeach:
 		if len(args) < 1 {
@@ -129,4 +125,21 @@ func (i *Interpreter) executeCommand(command, file string, args [][]byte, lineNu
 
 	}
 	return
+}
+
+const (
+	ignoreStart = "start"
+	ignoreEnd   = "end"
+)
+
+func (i *Interpreter) Ignore(filename string, arg string) {
+	i.state.Lock()
+	defer i.state.Unlock()
+
+	switch arg {
+	case ignoreStart:
+		i.state.ignoreIndex[filename] = 1
+	case ignoreEnd:
+		i.state.ignoreIndex[filename] = 0
+	}
 }

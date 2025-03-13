@@ -112,10 +112,10 @@ func BenchmarkFileInterpretation(b *testing.B) {
 		state: state{
 			ignoreIndex: map[string]int8{},
 			scopedRegistry: scopedRegistry{
-				scopedVars: map[string][]common.Var{},
+				scopedVars: map[string][]common.Variable{},
 				Mutex:      &sync.Mutex{},
 			},
-			unscopedVars: []common.Var{},
+			unscopedVars: []common.Variable{},
 			dependencies: map[string][]string{},
 			buf:          &bytes.Buffer{},
 			Mutex:        &sync.Mutex{},

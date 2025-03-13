@@ -37,7 +37,7 @@ const (
 	functionNameStringLength  = "length"
 )
 
-func (i *Interpreter) executeFunction(funcName interpreterFunc, fileName string, args [][]byte, additionalVars []common.Variable) (ret []byte, err error) {
+func (s *state) executeFunction(funcName interpreterFunc, fileName string, args [][]byte, additionalVars []common.Variable) (ret []byte, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%s: %v", funcName, err)
@@ -58,7 +58,7 @@ func (i *Interpreter) executeFunction(funcName interpreterFunc, fileName string,
 	// Internal.
 	case functionNameInternalVar:
 		return functions.Var(fileName, args, additionalVars, func(name, value []byte) error {
-			return i.setLocalVar(fileName, [][]byte{name, {'='}, value})
+			return s.setLocalVarByArgs(fileName, [][]byte{name, {'='}, value})
 		})
 
 	// Math.
@@ -97,8 +97,8 @@ func (i *Interpreter) executeFunction(funcName interpreterFunc, fileName string,
 	case functionNameStringReplace:
 		return functions.Replace(args)
 	case functionNameStringLength:
-		return functions.Length(args, len(i.state.varRegistryGlobal.entries), func(name string) int {
-			return len(i.state.varRegistryLocal.entries[strings.ToLower(name)])
+		return functions.Length(args, len(s.varRegistryGlobal.entries), func(name string) int {
+			return len(s.varRegistryLocal.entries[strings.ToLower(name)])
 		})
 
 	default:

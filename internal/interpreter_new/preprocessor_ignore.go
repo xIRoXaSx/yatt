@@ -1,11 +1,13 @@
 package interpreter
 
-func (i *Interpreter) ignoreStart(pd *preprocessorDirective) (err error) {
-	i.state.ignoreIndex[pd.fileName] = ignoreStateOpen
+type ignoreIndexes map[string]ignoreState
+
+func (s *state) ignoreStart(pd *preprocessorDirective) (err error) {
+	s.ignoreIndex[pd.fileName] = ignoreStateOpen
 	return
 }
 
-func (i *Interpreter) ignoreEnd(pd *preprocessorDirective) (err error) {
-	i.state.ignoreIndex[pd.fileName] = ignoreStateClose
+func (s *state) ignoreEnd(pd *preprocessorDirective) (err error) {
+	s.ignoreIndex[pd.fileName] = ignoreStateClose
 	return
 }

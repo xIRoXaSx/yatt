@@ -1,29 +1,28 @@
 package interpreter
 
 import (
-	"bytes"
 	"sync"
 
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 type state struct {
-	ignoreIndex       ignoreIndexes
-	depsResolver      dependencyResolver
-	foreachIndex      foreachIndexes
-	varRegistryLocal  variableRegistry
-	varRegistryGlobal variableRegistry // TODO: Currently merging unscopedVarIndexes into this as well!
-	foreach           sync.Map
-	buf               *bytes.Buffer
+	ignoreIndex  ignoreIndexes
+	depsResolver dependencyResolver
+	foreachBuff  foreachBufferStack
+	// foreachIndex       foreachIndexes
+	varRegistryLocal      variableRegistry
+	varRegistryGlobal     variableRegistry // TODO: Currently merging unscopedVarIndexes into this as well!
+	varRegistryGlobalFile variableRegistry // TODO: Currently merging unscopedVarIndexes into this as well!
+
 	*sync.Mutex
 }
 
-type ignoreIndexes map[string]ignoreState
-
-type foreachIndexes map[string]int
+// type foreachIndexes map[string]int
 
 type dependencies map[string][]string
 
+// TODO: Implement "lookup(register, name string)".
 type variableRegistry struct {
 	entries map[string]vars
 	*sync.Mutex
@@ -37,27 +36,43 @@ const (
 	ignoreStateClose ignoreState = iota
 	ignoreStateOpen
 
-	variableRegistryGlobalRegisterGlobal = "global"
+	variableRegistryGlobalRegister = "global"
 )
 
-func (s *state) registerGlobalVar(register string, newVar common.Variable) {
-	s.varRegistryGlobal.Lock()
-	defer s.varRegistryGlobal.Unlock()
+//
+// Variable setter.
+//
 
-	for register, vars := range s.varRegistryGlobal.entries {
+func (s *state) setGlobalVar(newVar common.Variable) {
+	setRegistryVar(&s.varRegistryGlobal, variableRegistryGlobalRegister, newVar)
+}
+
+func (s *state) setLocalVar(register string, newVar common.Variable) {
+	setRegistryVar(&s.varRegistryLocal, register, newVar)
+}
+
+func setRegistryVar(reg *variableRegistry, register string, newVar common.Variable) {
+	reg.Lock()
+	defer reg.Unlock()
+
+	for register, vars := range reg.entries {
 		for i, v := range vars {
 			if newVar.Name() == v.Name() {
 				// Update existing variable.
-				s.varRegistryGlobal.entries[register][i] = common.NewVar(v.Name(), newVar.Value())
+				reg.entries[register][i] = common.NewVar(v.Name(), newVar.Value())
 				return
 			}
 		}
 	}
 
-	s.varRegistryGlobal.entries[register] = append(s.varRegistryGlobal.entries[register], newVar)
+	reg.entries[register] = append(reg.entries[register], newVar)
 }
 
-func (s *state) varLookup(file, name string) (v variable) {
+//
+// Variable getter.
+//
+
+func (s *state) varLookup(file, name string) (v common.Variable) {
 	v = s.varLookupLocal(file, name)
 	if v.Name() == "" {
 		v = s.varLookupGlobal(name)
@@ -65,20 +80,47 @@ func (s *state) varLookup(file, name string) (v variable) {
 	return
 }
 
-func (s *state) varLookupGlobal(name string) (v variable) {
-	for _, v := range s.varRegistryGlobal.entries[variableRegistryGlobalRegisterGlobal] {
-		if v.Name() == name {
-			return v.(variable)
+func (s *state) varLookupGlobal(name string) (v common.Variable) {
+	return varLookupRegistry(&s.varRegistryGlobal, variableRegistryGlobalRegister, name)
+}
+
+func (s *state) varLookupLocal(register, name string) (v common.Variable) {
+	return varLookupRegistry(&s.varRegistryLocal, register, name)
+}
+
+func (s *state) varsLookupGlobal() (v []common.Variable) {
+	return s.varRegistryGlobal.entries[variableRegistryGlobalRegister]
+}
+
+func (s *state) varsLookupGlobalFile(register string) (v []common.Variable) {
+	return s.varRegistryGlobalFile.entries[register]
+}
+
+func varLookupRegistry(reg *variableRegistry, register, varName string) (v common.Variable) {
+	reg.Lock()
+	defer reg.Unlock()
+
+	for _, v := range reg.entries[register] {
+		if v.Name() == varName {
+			return v
 		}
 	}
+
+	// If variable is not found, return an empty one.
 	return variable{}
 }
 
-func (s *state) varLookupLocal(register, name string) (v variable) {
-	for _, v := range s.varRegistryLocal.entries[register] {
-		if v.Name() == name {
-			return v.(variable)
-		}
+//
+// Helper.
+//
+
+// setLocalVar parses and sets a local variable from the given args.
+func (s *state) setLocalVarByArgs(scope string, args [][]byte) (err error) {
+	v := variableFromArgs(args)
+	if v.Name() == "" || v.Value() == "" {
+		return errEmptyVariableParameter
 	}
-	return variable{}
+
+	s.setLocalVar(scope, v)
+	return
 }

@@ -28,25 +28,16 @@ type Interpreter struct {
 type Options struct {
 	InPath        string
 	OutPath       string
-	FileWhitelist MultiString
-	FileBlacklist MultiString
-	VarFilePaths  MultiString
+	FileWhitelist []string
+	FileBlacklist []string
+	VarFilePaths  []string
 	Indent        bool
 	UseCRLF       bool
 	NoStats       bool
 	Verbose       bool
 }
 
-type MultiString []string
-
-func (vp *MultiString) String() string {
-	return strings.Join(*vp, " ")
-}
-
-func (vp *MultiString) Set(v string) (err error) {
-	*vp = append(*vp, v)
-	return
-}
+type indexers map[string]indexer
 
 type indexer struct {
 	start int
@@ -55,7 +46,7 @@ type indexer struct {
 }
 
 type scopedRegistry struct {
-	scopedVars map[string][]common.Var
+	scopedVars map[string][]common.Variable
 	*sync.Mutex
 }
 
@@ -63,8 +54,8 @@ type state struct {
 	ignoreIndex        map[string]int8
 	scopedRegistry     scopedRegistry
 	dependencies       map[string][]string
-	unscopedVarIndexes map[string]indexer
-	unscopedVars       []common.Var
+	unscopedVarIndexes indexers
+	unscopedVars       []common.Variable
 	foreach            sync.Map
 	dirMode            bool
 	buf                *bytes.Buffer
@@ -83,11 +74,11 @@ func New(opts *Options) (i *Interpreter) {
 		state: state{
 			ignoreIndex: map[string]int8{},
 			scopedRegistry: scopedRegistry{
-				scopedVars: map[string][]common.Var{},
+				scopedVars: map[string][]common.Variable{},
 				Mutex:      &sync.Mutex{},
 			},
 			dependencies:       map[string][]string{},
-			unscopedVarIndexes: map[string]indexer{},
+			unscopedVarIndexes: indexers{},
 			foreach:            sync.Map{},
 			buf:                &bytes.Buffer{},
 			Mutex:              &sync.Mutex{},

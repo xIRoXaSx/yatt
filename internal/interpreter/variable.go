@@ -22,7 +22,7 @@ func (v variable) Value() string {
 }
 
 // variable parses a variable name and value and returns it.
-func (i *Interpreter) variable(args [][]byte) (v common.Var) {
+func (i *Interpreter) variable(args [][]byte) (v common.Variable) {
 	i.state.Lock()
 	defer i.state.Unlock()
 
@@ -56,8 +56,8 @@ func (i *Interpreter) variable(args [][]byte) (v common.Var) {
 	return newVar
 }
 
-// setScopedVar parses and sets a scoped variable from the given args.
-func (i *Interpreter) setScopedVar(scope string, args [][]byte) {
+// SetScopedVar parses and sets a scoped variable from the given args.
+func (i *Interpreter) SetScopedVar(scope string, args [][]byte) {
 	i.state.scopedRegistry.Lock()
 	defer i.state.scopedRegistry.Unlock()
 
@@ -96,7 +96,7 @@ func (i *Interpreter) setUnscopedVar(varFile string, v [][]byte) {
 
 // resolve resolves a variable to its corresponding value.
 // If the variable could not be found, the placeholders will not get replaced!
-func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []common.Var) (ret []byte, err error) {
+func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
 	templateStart := common.TemplateStart()
 	templateEnd := common.TemplateEnd()
 	ret = line
@@ -135,7 +135,7 @@ func (i *Interpreter) resolve(fileName string, line []byte, additionalVars []com
 				continue
 			}
 
-			lookupVars := make([]common.Var, 0)
+			lookupVars := make([]common.Variable, 0)
 			for j := range vars {
 				v := i.state.varLookup(fileName, string(vars[j]))
 				if v.Name() == "" {

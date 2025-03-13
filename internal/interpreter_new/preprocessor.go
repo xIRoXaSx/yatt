@@ -22,7 +22,7 @@ type preprocessorDirective struct {
 	buf      *bytes.Buffer
 }
 
-func (i *Interpreter) preprocess(pd *preprocessorDirective, lineDisplayNum int) (err error) {
+func (s *state) preprocess(pd *preprocessorDirective, lineDisplayNum int, importPathFunc func(pd *preprocessorDirective) error) (err error) {
 	callID := fmt.Sprintf("%s: %d", pd.name, lineDisplayNum)
 	defer func() {
 		if err != nil {
@@ -33,26 +33,24 @@ func (i *Interpreter) preprocess(pd *preprocessorDirective, lineDisplayNum int) 
 
 	switch pd.name {
 	case directiveNameForeach:
-		// TODO: Implementation.
-		return
+		return s.foreachStart(pd)
 
 	case directiveNameForeachEnd:
-		// TODO: Implementation.
-		return
+		return s.foreachEnd(pd)
 
 	case directiveNameIgnore:
-		return i.ignoreStart(pd)
+		return s.ignoreStart(pd)
 
 	case directiveNameIgnoreEnd:
-		return i.ignoreEnd(pd)
+		return s.ignoreEnd(pd)
 
 	case directiveNameImport:
-		return i.importPath(pd)
+		return importPathFunc(pd)
 
 	case directiveNameVariable:
+		return s.setLocalVarByArgs(pd.fileName, pd.args)
+
 	default:
 		return fmt.Errorf("unknown preprocessor directive: %s", pd.name)
 	}
-
-	return
 }

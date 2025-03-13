@@ -9,7 +9,7 @@ import (
 
 var errMapLoadForeach = errors.New("unable to load foreach map values")
 
-func (s *state) varLookup(file, name string) (v common.Var) {
+func (s *state) varLookup(file, name string) (v common.Variable) {
 	v = s.lookupScoped(file, name)
 	if v.Name() == "" {
 		v = s.lookupUnscoped(name)
@@ -17,7 +17,7 @@ func (s *state) varLookup(file, name string) (v common.Var) {
 	return
 }
 
-func (s *state) lookupUnscoped(name string) common.Var {
+func (s *state) lookupUnscoped(name string) common.Variable {
 	for _, v := range s.unscopedVars {
 		if v.Name() == name {
 			return v
@@ -26,7 +26,7 @@ func (s *state) lookupUnscoped(name string) common.Var {
 	return variable{}
 }
 
-func (s *state) lookupScoped(fileName, name string) common.Var {
+func (s *state) lookupScoped(fileName, name string) common.Variable {
 	for _, v := range s.scopedRegistry.scopedVars[fileName] {
 		if v.Name() == name {
 			return v

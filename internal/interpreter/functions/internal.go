@@ -6,7 +6,7 @@ import (
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
-func Var(args [][]byte, additionalVars []common.Var) (ret [][]byte, err error) {
+func Var(args [][]byte, additionalVars []common.Variable) (ret [][]byte, err error) {
 	if len(args) != 2 {
 		err = errors.New("exactly 2 args expected")
 		return
@@ -22,5 +22,16 @@ func Var(args [][]byte, additionalVars []common.Var) (ret [][]byte, err error) {
 		}
 	}
 	ret = [][]byte{arg0, arg1}
+	return
+}
+
+func SetScopedVar(ip common.Interpreter, fileName string, args [][]byte, additionalVars []common.Variable) (err error) {
+	var newVar [][]byte
+	newVar, err = Var(args, additionalVars)
+	if err != nil {
+		return
+	}
+
+	ip.SetScopedVar(fileName, [][]byte{newVar[0], []byte("="), newVar[1]})
 	return
 }

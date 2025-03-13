@@ -182,7 +182,7 @@ func TestFunctions(t *testing.T) {
 			args[k] = []byte(arg)
 		}
 
-		ret, err := i.executeFunction(interpreterFunc(test.funcName), test.fileName, args, test.vars)
+		ret, err := i.state.executeFunction(interpreterFunc(test.funcName), test.fileName, args, test.vars)
 		if test.fail {
 			r.Error(t, err)
 			continue

@@ -46,7 +46,7 @@ const (
 	functionVar          = "var"
 )
 
-func (i *Interpreter) executeFunction(function string, args [][]byte, fileName string, additionalVars []common.Var) (ret []byte, err error) {
+func (i *Interpreter) executeFunction(function string, args [][]byte, fileName string, additionalVars []common.Variable) (ret []byte, err error) {
 	if len(args) == 0 {
 		err = fmt.Errorf("%v: func statement needs at least one arg", function)
 		return
@@ -144,34 +144,12 @@ func (i *Interpreter) executeFunction(function string, args [][]byte, fileName s
 		ret, err = functions.Replace(args)
 
 	case functionLength:
-		if len(args) != 1 {
-			err = fmt.Errorf("%s: exactly 1 arg expected", function)
-			return
-		}
-
-		var (
-			l    int
-			arg0 = args[0]
-		)
-		if bytes.HasPrefix(arg0, []byte(foreachUnscopedVars)) {
-			varFile := strings.TrimPrefix(string(arg0), foreachUnscopedVars+"_")
-			if varFile == foreachUnscopedVars {
-				l = len(i.state.unscopedVars)
-			} else {
-				l = i.state.unscopedVarIndexes[strings.ToLower(varFile)].len
-			}
-		} else {
-			l = len(arg0)
-		}
-		ret = []byte(fmt.Sprint(l))
+		ret, err = functions.Length(args, foreachUnscopedVars, i.state.unscopedVars, func(name string) int {
+			return i.state.unscopedVarIndexes[strings.ToLower(name)].len
+		})
 
 	case functionVar:
-		var newVar [][]byte
-		newVar, err = functions.Var(args, additionalVars)
-		if err != nil {
-			return
-		}
-		i.setScopedVar(fileName, [][]byte{newVar[0], []byte("="), newVar[1]})
+		err = functions.SetScopedVar(i, fileName, args, additionalVars)
 	}
 	return
 }
