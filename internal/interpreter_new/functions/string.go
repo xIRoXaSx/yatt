@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strconv"
 	"strings"
+
+	"github.com/xiroxasx/fastplate/internal/common"
 )
 
 func Split(args [][]byte) (ret []byte, err error) {
@@ -16,7 +18,7 @@ func Split(args [][]byte) (ret []byte, err error) {
 	if err != nil {
 		return
 	}
-	v := bytes.Split(args[0], trimQuotes(args[1]))
+	v := bytes.Split(args[0], common.TrimQuotes(args[1]))
 	if len(v) < ind {
 		ret = v[0]
 		return
@@ -35,7 +37,7 @@ func Repeat(args [][]byte) (ret []byte, err error) {
 	if err != nil {
 		return
 	}
-	ret = bytes.Repeat(trimQuotes(args[0]), factor)
+	ret = bytes.Repeat(common.TrimQuotes(args[0]), factor)
 	return
 }
 
@@ -46,9 +48,9 @@ func Replace(args [][]byte) (ret []byte, err error) {
 	}
 
 	ret = bytes.ReplaceAll(
-		trimQuotes(args[0]),
-		trimQuotes(args[1]),
-		trimQuotes(args[2]),
+		common.TrimQuotes(args[0]),
+		common.TrimQuotes(args[1]),
+		common.TrimQuotes(args[2]),
 	)
 	return
 }
@@ -59,37 +61,23 @@ func Length(args [][]byte, globalVarLen int, localVarLenRetrieverFn func(name st
 		return
 	}
 
-	const globalVarKey = "GLOBAL"
+	const globalVarKey = "FASTPLATE_VARS"
 	var (
 		length int
 		arg    = args[0]
 	)
 	if !bytes.HasPrefix(arg, []byte(globalVarKey)) {
-		length = len(arg)
+		ret = []byte(strconv.Itoa(len(arg)))
+		return
+	}
+
+	varFile := strings.TrimPrefix(string(arg), globalVarKey+"_")
+	if varFile == globalVarKey {
+		length = globalVarLen
 	} else {
-		varFile := strings.TrimPrefix(string(arg), globalVarKey+"_")
-		if varFile == globalVarKey {
-			length = globalVarLen
-		} else {
-			length = localVarLenRetrieverFn(varFile)
-		}
+		length = localVarLenRetrieverFn(varFile)
 	}
 	ret = []byte(strconv.Itoa(length))
 
-	return
-}
-
-//
-// Helper.
-//
-
-// TrimQuotes trims spaces, prefix and suffix separately to allow symbol escaping.
-func trimQuotes(val []byte) (ret []byte) {
-	quoteSingle := '"'
-	quoteDouble := '\''
-	ret = bytes.TrimSpace(val)
-	ret = bytes.TrimFunc(ret, func(r rune) bool {
-		return r == quoteSingle || r == quoteDouble
-	})
 	return
 }

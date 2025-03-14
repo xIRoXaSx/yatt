@@ -1,19 +1,17 @@
 package interpreter
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/fastplate/internal/interpreter_new/core"
 )
 
 const (
@@ -23,16 +21,9 @@ const (
 	varFileName   = "fastplate.var"
 )
 
-var (
-	templateStartBytes = []byte(templateStart)
-	templateEndBytes   = []byte(templateEnd)
-)
-
 type Interpreter struct {
-	prefixes   []string
-	lineEnding []byte
-	l          zerolog.Logger
-	state      *state
+	l    zerolog.Logger
+	core *core.Core
 
 	opts *Options
 }
@@ -48,30 +39,22 @@ type Options struct {
 	Verbose       bool
 }
 
-func New(opts *Options, l zerolog.Logger) (i *Interpreter) {
+func defaultPrefixTokens() []string {
+	return []string{
+		fmt.Sprintf("#%s", prefixName),
+		fmt.Sprintf("# %s", prefixName),
+		fmt.Sprintf("//%s", prefixName),
+		fmt.Sprintf("// %s", prefixName),
+	}
+}
+
+func New(l zerolog.Logger, opts *Options) (i *Interpreter) {
 	i = &Interpreter{
-		opts:       opts,
-		prefixes:   defaultPrefixTokens(),
-		lineEnding: []byte(lineEnding),
-		l:          l,
-		state: &state{
-			ignoreIndex:  make(ignoreIndexes, 0),
-			foreachBuff:  newForeachBufferStack(""),
-			Mutex:        &sync.Mutex{},
-			depsResolver: newDependencyResolver(),
-			varRegistryLocal: variableRegistry{
-				entries: make(map[string]vars, 0),
-				Mutex:   &sync.Mutex{},
-			},
-			varRegistryGlobal: variableRegistry{
-				entries: make(map[string]vars, 0),
-				Mutex:   &sync.Mutex{},
-			},
-			varRegistryGlobalFile: variableRegistry{
-				entries: make(map[string]vars, 0),
-				Mutex:   &sync.Mutex{},
-			},
-		},
+		opts: opts,
+		l:    l,
+		core: core.New(l, defaultPrefixTokens(), core.Options{
+			PreserveIndent: opts.Indent,
+		}),
 	}
 
 	i.initScopedVars()
@@ -118,113 +101,14 @@ func (i *Interpreter) Start() (err error) {
 	return
 }
 
-func defaultPrefixTokens() []string {
-	return []string{
-		fmt.Sprintf("#%s", prefixName),
-		fmt.Sprintf("# %s", prefixName),
-		fmt.Sprintf("//%s", prefixName),
-		fmt.Sprintf("// %s", prefixName),
-	}
-}
-
-// interpret tries to interpret the scanned content of file.rc.
-// If the ReadCloser content contains available tokens, it tries to resolve them and writes it,
-// along with the prepended indentParent, to buf.
-func (i *Interpreter) interpret(file interpreterFile, parentLineIndent []byte) (err error) {
-	// Always ensure to close the file's rc.
-	defer func() {
-		cErr := file.rc.Close()
-		if cErr != nil {
-			if err == nil {
-				err = cErr
-				return
-			}
-			i.l.Err(cErr).Str("file", file.name).Msg("closing file reader")
-		}
-	}()
-
-	var (
-		// Currently read line.
-		lineNum int
-		// Limits reads to 65536 bytes per line.
-		scanner = bufio.NewScanner(file.rc)
-	)
-	for scanner.Scan() {
-		err = scanner.Err()
-		if err != nil {
-			return
-		}
-
-		line := scanner.Bytes()
-		currentLineIndent := make([]byte, 0)
-		if i.opts.Indent {
-			// Line indents are required, check current line indents.
-			currentLineIndent = common.GetLeadingWhitespace(line)
-		}
-
-		err = i.searchTokensAndExecute(file.name, line, currentLineIndent, parentLineIndent, file.writer, lineNum+1)
-		if err != nil {
-			return
-		}
-	}
-
-	return
-}
-
-func (i *Interpreter) cutPrefix(b []byte) (ret []byte) {
-	prefix := i.matchedPrefixToken(b)
-	if prefix == nil {
-		return
-	}
-	return i.trimLine(b, prefix)
-}
-
-func (i *Interpreter) trimLine(b, prefix []byte) []byte {
-	return bytes.TrimPrefix(bytes.TrimSpace(b), append(prefix, ' '))
-}
-
-func (i *Interpreter) matchedPrefixToken(line []byte) (prefix []byte) {
-	for _, pref := range i.prefixes {
-		if bytes.HasPrefix(bytes.TrimSpace(line), []byte(pref)) {
-			return []byte(pref)
-		}
-	}
-	return
-}
-
 func (i *Interpreter) initScopedVars() {
-	// Look for var file in the current working directory.
+	// Cleanup filepaths.
 	vFiles := i.opts.VarFilePaths
-	if len(vFiles) == 0 {
-		_, err := os.Stat(varFileName)
-		if err == nil {
-			vFiles = []string{varFileName}
-		}
+	for i, vFile := range vFiles {
+		vFiles[i] = filepath.Clean(vFile)
 	}
 
-	// Check if the global var files exist and read it into the memory.
-	for _, vf := range vFiles {
-		cont, err := os.ReadFile(vf)
-		if err != nil {
-			i.l.Fatal().Err(err).Str("path", vf).Msg("unable to read variable file")
-		}
-
-		lines := bytes.Split(cont, i.lineEnding)
-		for _, l := range lines {
-			split := bytes.Split(i.cutPrefix(l), []byte{' '})
-			if string(split[0]) != directiveNameVariable {
-				continue
-			}
-			// Skip the var declaration keyword.
-			i.setGlobalVar(split[1:])
-		}
-	}
-}
-
-// setGlobalVar parses and registers an unscoped variable from the given args.
-func (i *Interpreter) setGlobalVar(tokens [][]byte) {
-	variable := variableFromArgs(tokens)
-	i.state.setGlobalVar(variable)
+	i.core.InitLocalVariablesByFiles(vFiles...)
 }
 
 func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {
@@ -257,13 +141,13 @@ func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {
 	}
 
 	buf := &bytes.Buffer{}
-	interFile := interpreterFile{
-		name:   inPath,
-		rc:     inFile,
-		writer: buf,
+	interFile := core.InterpreterFile{
+		Name:   inPath,
+		RC:     inFile,
+		Writer: buf,
 	}
 	// Write to the buffer to ensure that files don't get partially written.
-	err = i.interpret(interFile, nil)
+	err = i.core.Interpret(nil, interFile)
 	if err != nil {
 		return
 	}

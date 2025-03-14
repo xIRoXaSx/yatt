@@ -1,4 +1,4 @@
-package interpreter
+package core
 
 import (
 	"bytes"
@@ -8,72 +8,50 @@ import (
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
-type interpreterFile struct {
-	name   string
-	rc     io.ReadCloser
-	writer io.Writer
-}
-
-type recurringToken uint8
-
-const (
-	recurringTokenIgnore recurringToken = iota + 1
-)
-
-func (i *Interpreter) preprocessorState(fileName string) (t recurringToken) {
-	// Line does not contain one of the required prefixes.
-	if i.state.ignoreIndex[fileName] == ignoreStateOpen {
-		return recurringTokenIgnore
-	}
-
-	return
-}
-
-func (i *Interpreter) searchTokensAndExecute(fileName string, line, currentLineIndent, parentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
+func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent, parentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
 	lineDisplayNum := lineNum + 1
 	lineNoIndent := line[len(currentLineIndent):]
-	prefix := i.matchedPrefixToken(lineNoIndent)
+	prefix := c.matchedPrefixToken(lineNoIndent)
 	if len(prefix) > 0 {
 		// Trim the prefix and check against internal commands.
-		statement := i.trimLine(lineNoIndent, prefix)
+		statement := trimLine(lineNoIndent, prefix)
 		split := bytes.Split(statement, []byte{' '})
 		if len(split) == 0 {
 			return
 		}
 
-		pd := &preprocessorDirective{
-			name:     string(split[0]),
-			fileName: filepath.Clean(fileName),
-			args:     split[1:],
-			indent:   append(currentLineIndent, parentLineIndent...),
-			buf:      &bytes.Buffer{},
-		}
-		err = i.state.preprocess(pd, lineDisplayNum, func(pd *preprocessorDirective) error {
-			return i.importPath(pd)
+		pd := newPreprocessorDirective(
+			string(split[0]),
+			filepath.Clean(fileName),
+			split[1:],
+			append(currentLineIndent, parentLineIndent...),
+		)
+		err = c.Preprocess(pd, lineDisplayNum, func(pd *PreprocessorDirective) error {
+			return c.importPath(pd)
 		})
 		if err != nil {
 			return
 		}
 
-		_, err = pd.buf.WriteTo(buf)
+		_, err = pd.WriteTo(buf)
 		return
 	}
 
-	switch i.preprocessorState(fileName) {
-	case recurringTokenIgnore:
+	switch c.preprocessorState(fileName) {
+	case RecurringTokenIgnore:
 		// Currently moving inside a ignore block, skipping line...
 		return
 
 	default:
 		// No prefix found, try to resolve variables and functions if there are any.
 		var ret []byte
-		ret, err = i.state.resolve(fileName, line, nil)
+		ret, err = c.resolve(fileName, line, nil)
 		if err != nil {
 			return
 		}
 		indents := append(parentLineIndent, currentLineIndent...)
 		ret = append(indents, ret...)
-		_, err = buf.Write(append(ret, i.lineEnding...))
+		_, err = buf.Write(append(ret, lineEnding...))
 		if err != nil {
 			return
 		}
@@ -82,7 +60,7 @@ func (i *Interpreter) searchTokensAndExecute(fileName string, line, currentLineI
 	return
 }
 
-func (s *state) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
+func (c *Core) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
 	templateStart := templateStartBytes
 	templateEnd := templateEndBytes
 	ret = line
@@ -108,7 +86,7 @@ func (s *state) resolve(fileName string, line []byte, additionalVars []common.Va
 			fncName, args := unwrapFunc(m)
 			if len(fncName) == 0 {
 				// No function found, try to lookup and replace variable.
-				v := s.varLookup(fileName, string(m))
+				v := c.varLookup(fileName, string(m))
 				if v.Value() == "" {
 					continue
 				}
@@ -118,9 +96,10 @@ func (s *state) resolve(fileName string, line []byte, additionalVars []common.Va
 			}
 
 			// Check function's args for variables.
+			// TODO: IMPROVE.
 			varsFromArgs := make([]common.Variable, 0)
 			for j := range args {
-				v := s.varLookup(fileName, string(args[j]))
+				v := c.varLookup(fileName, string(args[j]))
 				if v.Name() == "" {
 					// For some functions, numbers are also used. Add them.
 					val := string(args[j])
@@ -140,7 +119,7 @@ func (s *state) resolve(fileName string, line []byte, additionalVars []common.Va
 			}
 
 			var mod []byte
-			mod, err = s.executeFunction(fncName, fileName, remappedArgs, additionalVars)
+			mod, err = c.executeFunction(fncName, fileName, remappedArgs, additionalVars)
 			if err != nil {
 				return
 			}
@@ -149,7 +128,7 @@ func (s *state) resolve(fileName string, line []byte, additionalVars []common.Va
 	}
 
 	if len(bytes.Split(ret, templateStart)) > 1 && !bytes.Equal(ret, line) {
-		ret, err = s.resolve(fileName, ret, additionalVars)
+		ret, err = c.resolve(fileName, ret, additionalVars)
 		if err != nil {
 			return
 		}
@@ -161,14 +140,8 @@ func (s *state) resolve(fileName string, line []byte, additionalVars []common.Va
 	return
 }
 
-type interpreterFunc []byte
-
-func (i interpreterFunc) string() string {
-	return string(i)
-}
-
 // unwrapFunc gets the function's name and its args from the given byte slice.
-func unwrapFunc(b []byte) (fncName interpreterFunc, args [][]byte) {
+func unwrapFunc(b []byte) (fncName parserFunc, args [][]byte) {
 	args = make([][]byte, 0)
 	fnc := bytes.SplitN(bytes.TrimSpace(b), []byte("("), 2)
 	if len(fnc) == 1 {
@@ -181,39 +154,5 @@ func unwrapFunc(b []byte) (fncName interpreterFunc, args [][]byte) {
 	for j := range args {
 		args[j] = bytes.TrimSpace(args[j])
 	}
-	return
-}
-
-//
-// Helper functions.
-//
-
-func replaceVar(line, varName, replacement []byte) []byte {
-	matched := bytes.Join([][]byte{templateStartBytes, varName, templateEndBytes}, nil)
-	return bytes.ReplaceAll(line, matched, replacement)
-}
-
-func remapArgsWithVariables(fncNameStr string, varsFromArgs, additionalVars []common.Variable) (values [][]byte, err error) {
-	values = make([][]byte, len(varsFromArgs))
-
-additionalVar:
-	for idx := range varsFromArgs {
-		for _, av := range additionalVars {
-			// Overwrite variable value if the names match.
-			// This may be the case for "foreach"-variables.
-			if varsFromArgs[idx].Name() == av.Name() {
-				values[idx] = []byte(av.Value())
-				continue additionalVar
-			}
-		}
-
-		// Keep variable name intact so the function call can retrieve the var's value.
-		if fncNameStr == "var" {
-			values[idx] = []byte(varsFromArgs[idx].Name())
-			continue
-		}
-		values[idx] = []byte(varsFromArgs[idx].Value())
-	}
-
 	return
 }

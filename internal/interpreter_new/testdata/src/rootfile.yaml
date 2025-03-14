@@ -1,0 +1,64 @@
+# Starting from here, we want to import multiple files located in this directory.
+# Statements may have a space between the '#' or not ("#fastplate" / "# fastplate").
+ImportExample:
+  # fastplate import ./testdata/src/partials/description.yaml
+
+  # If enabled, indentation in front of an import statement will be applied to the whole imported section.
+  # The content of the imported file will automatically have the prepended spaces / tabs.
+  # This works with any amount of spaces / tabs.
+  Indention:
+    # fastplate import ./testdata/src/partials/indention.yaml
+
+  # Nesting imports
+  # ~-~-~-~-~-~-~-~
+  # Nested imports allow for more flexibility.
+  # In this example, the correct YAML indention comes directly from inside the imported file(s).
+  NestedImports: |
+  # fastplate import ./testdata/src/partials/nested.yaml
+
+  # Ignoring parts of a file
+  # ~-~-~-~-~-~-~-~-~-~-~-~-
+  # You can ignore lines via the ignore start / end syntax!
+  # This is pretty handy if you don't want certain sections in the output file.
+  # fastplate ignore start
+  #   These two lines will not show up in the output file.
+  #   This also allows for template specific documentation.
+  # fastplate ignore end
+
+  # Using variables
+  # ~-~-~-~-~-~-~-~
+  # By declaring scoped / local variables in the syntax down below, you can reuse values in the same template (file).
+  # You can declare a fastplate.var file or use the optional "-var <file_path>" argument to define unscoped / global variables.
+  # This allows you to use variables regardless of the template.
+  # The following options are valid for both scopes: x = y, x= y, x =y, x=y.
+  # Declaring a variable:
+  #   # fastplate var test = 1
+  # Using the syntax:
+  #   This is a text which includes {{test}} variable.
+  # Example:
+  #   A value like the threshold down below may be used in multiple places
+  #   and can therefore be declared as a var.
+  Variables:
+    # fastplate var scoped_threshold = 0.75
+    Threshold: {{scoped_threshold}}
+    Message: The threshold of {{scoped_threshold}} has been reached.
+    # fastplate import ./testdata/src/partials/varscopes.yaml
+
+  Functions:
+    # fastplate import ./testdata/src/partials/functions.yaml
+
+  # Using foreach loops
+  # ~-~-~-~-~-~-~-~-~-~
+  # By declaring variables and using the corresponding foreach syntax, you can create a for-each loop.
+  # Opening and closing brackets are optional.
+  loops: |
+  # fastplate var var1 = var 1
+  # fastplate var var2 = var 2
+  # fastplate var var3 = var 3
+  # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+    This is the outer loop!{{var(outer, index)}}
+    # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+      Hello from index {{index}} with value "{{value}}" and outer index of {{outer}}.
+    # fastplate foreachend
+  # fastplate foreachend
+# End of file.

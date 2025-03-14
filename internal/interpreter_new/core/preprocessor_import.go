@@ -1,4 +1,4 @@
-package interpreter
+package core
 
 import (
 	"bufio"
@@ -8,11 +8,7 @@ import (
 	"path/filepath"
 )
 
-const (
-	preprocessorImportName = "import"
-)
-
-func (i *Interpreter) importPath(pd *preprocessorDirective) (err error) {
+func (c *Core) importPath(pd *PreprocessorDirective) (err error) {
 	if len(pd.args) != 1 {
 		err = fmt.Errorf("unknown syntax: %s <file path>", preprocessorImportName)
 		return
@@ -26,19 +22,19 @@ func (i *Interpreter) importPath(pd *preprocessorDirective) (err error) {
 		return
 	}
 
-	interFile := interpreterFile{
-		name:   filepath.Clean(pd.fileName),
-		rc:     importFile,
-		writer: pd.buf,
+	interFile := InterpreterFile{
+		Name:   filepath.Clean(pd.fileName),
+		RC:     importFile,
+		Writer: pd.buf,
 	}
-	err = i.interpret(interFile, pd.indent)
+	err = c.interpret(interFile, pd.indent)
 	if err != nil {
 		return err
 	}
 	return
 }
 
-func (i *Interpreter) importPathCheckCyclicDependencies(startPath string) (err error) {
+func (c *Core) ImportPathCheckCyclicDependencies(startPath string) (err error) {
 	file, err := os.Open(startPath)
 	if err != nil {
 		return
@@ -49,7 +45,7 @@ func (i *Interpreter) importPathCheckCyclicDependencies(startPath string) (err e
 			err = cErr
 			return
 		}
-		i.l.Err(cErr).Str("file", startPath).Msg("closing file reader")
+		c.l.Err(cErr).Str("file", startPath).Msg("closing file reader")
 	}()
 
 	var (
@@ -63,25 +59,25 @@ func (i *Interpreter) importPathCheckCyclicDependencies(startPath string) (err e
 		}
 
 		line := bytes.TrimSpace(scanner.Bytes())
-		prefix := i.matchedPrefixToken(line)
+		prefix := c.matchedPrefixToken(line)
 		if len(prefix) == 0 {
 			continue
 		}
 
-		statement := i.trimLine(line, prefix)
+		statement := trimLine(line, prefix)
 		split := bytes.Split(statement, []byte{' '})
 		if len(split) == 0 {
 			err = errDependencyUnknownSyntax
 			return
 		}
 
-		pd := &preprocessorDirective{
+		pd := &PreprocessorDirective{
 			name:     string(split[0]),
 			fileName: startPath,
 			args:     split[1:],
 			buf:      &bytes.Buffer{},
 		}
-		err = i.readDependency(pd)
+		err = c.readDependency(pd)
 		if err != nil {
 			return
 		}
@@ -89,7 +85,7 @@ func (i *Interpreter) importPathCheckCyclicDependencies(startPath string) (err e
 	return
 }
 
-func (i *Interpreter) readDependency(pd *preprocessorDirective) (err error) {
+func (c *Core) readDependency(pd *PreprocessorDirective) (err error) {
 	if len(pd.args) != 1 {
 		return errDependencyUnknownSyntax
 	}
@@ -106,7 +102,7 @@ func (i *Interpreter) readDependency(pd *preprocessorDirective) (err error) {
 				err = cErr
 				return
 			}
-			i.l.Err(cErr).Str("path", path).Msg("closing dependency file on defer")
+			c.l.Err(cErr).Str("path", path).Msg("closing dependency file on defer")
 		}
 	}()
 
@@ -119,7 +115,7 @@ func (i *Interpreter) readDependency(pd *preprocessorDirective) (err error) {
 		}
 
 		line := bytes.TrimSpace(scanner.Bytes())
-		prefix := i.matchedPrefixToken(line)
+		prefix := c.matchedPrefixToken(line)
 		if len(prefix) == 0 {
 			continue
 		}
@@ -137,11 +133,11 @@ func (i *Interpreter) readDependency(pd *preprocessorDirective) (err error) {
 		// Now we need to check if the file does also import the current one.
 		err = func() (err error) {
 			importPath := filepath.Clean(string(bytes.TrimSpace(importSplit[1])))
-			i.state.Lock()
-			defer i.state.Unlock()
+			c.Lock()
+			defer c.Unlock()
 
-			i.state.depsResolver.addDependency(pd.fileName, importPath)
-			cyclic := i.state.depsResolver.dependenciesAreCyclic(pd.fileName, importPath)
+			c.depsResolver.addDependency(pd.fileName, importPath)
+			cyclic := c.depsResolver.dependenciesAreCyclic(pd.fileName, importPath)
 			if cyclic {
 				return fmt.Errorf("cyclic dependency")
 			}

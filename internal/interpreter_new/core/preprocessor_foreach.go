@@ -1,4 +1,4 @@
-package interpreter
+package core
 
 import (
 	"bytes"
@@ -22,12 +22,12 @@ type variableGetter interface {
 	varLookupLocal(register, name string) common.Variable
 }
 
-func (s *state) foreachStart(pd *preprocessorDirective) (err error) {
+func (c *Core) foreachStart(pd *PreprocessorDirective) (err error) {
 	if len(pd.args) < 1 {
 		return errors.New("at least 1 arg expected")
 	}
 
-	s.foreachBuff.state = append(s.foreachBuff.state, foreachBufferState{
+	c.foreachBuff.state = append(c.foreachBuff.state, foreachBufferState{
 		args:   pd.args,
 		indent: pd.indent,
 		buf:    &bytes.Buffer{},
@@ -36,18 +36,69 @@ func (s *state) foreachStart(pd *preprocessorDirective) (err error) {
 			Mutex:   &sync.Mutex{},
 		},
 	})
-	s.foreachBuff.cursor++
+	c.foreachBuff.cursor++
 	return
 }
 
-func (s *state) foreachEnd(pd *preprocessorDirective) (err error) {
+func (c *Core) foreachEnd(pd *PreprocessorDirective) (err error) {
 	defer func() {
-		if err == nil && s.foreachBuff.cursor > 0 {
-			s.foreachBuff.cursor--
+		if err == nil && c.foreachBuff.cursor > 0 {
+			c.foreachBuff.cursor--
 		}
 	}()
 
-	return s.foreachEvaluate(pd.buf, pd.indent)
+	return c.foreachEvaluate(pd.buf, pd.indent)
+}
+
+func (c *Core) foreachEvaluate(dst io.Writer, indent []byte) (err error) {
+	var foreachLineNum int
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("foreach evaluation: %v (foreach line %d)", err, foreachLineNum)
+		}
+	}()
+
+	buf := c.foreachBuff.currentBuffer()
+	content := buf.Bytes()
+	lines := bytes.Split(content, lineEnding)
+
+	lineIterator := func(vars ...common.Variable) (err error) {
+		for i, line := range lines {
+			var resolved []byte
+			resolved, err = c.resolve(c.foreachBuff.fileName, line, append(vars, common.NewVar("index", strconv.Itoa(i))))
+			if err != nil {
+				foreachLineNum = i
+				return
+			}
+			_, err = dst.Write(append(indent, resolved...))
+			if err != nil {
+				foreachLineNum = i
+				return
+			}
+		}
+
+		return
+	}
+
+	vars, rangeNum := c.foreachBuff.evaluationVars()
+	if rangeNum > -1 {
+		for i := 0; i < rangeNum; i++ {
+			err = lineIterator()
+			if err != nil {
+				return
+			}
+		}
+		return
+	}
+
+	for _, v := range vars {
+		err = lineIterator(common.NewVar("value", v.Value()))
+		if err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 //
@@ -92,57 +143,6 @@ func (f *foreachBufferState) varLookupForeach(name string) (v common.Variable) {
 
 func (f *foreachBufferStack) isActive() bool {
 	return f.cursor > 0
-}
-
-func (s *state) foreachEvaluate(dst io.Writer, indent []byte) (err error) {
-	var foreachLineNum int
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("foreach evaluation: %v (foreach line %d)", err, foreachLineNum)
-		}
-	}()
-
-	buf := s.foreachBuff.currentBuffer()
-	content := buf.Bytes()
-	lines := bytes.Split(content, []byte(lineEnding))
-
-	lineIterator := func(vars ...common.Variable) (err error) {
-		for i, line := range lines {
-			var resolved []byte
-			resolved, err = s.resolve(s.foreachBuff.fileName, line, append(vars, common.NewVar("index", strconv.Itoa(i))))
-			if err != nil {
-				foreachLineNum = i
-				return
-			}
-			_, err = dst.Write(append(indent, resolved...))
-			if err != nil {
-				foreachLineNum = i
-				return
-			}
-		}
-
-		return
-	}
-
-	vars, rangeNum := s.foreachBuff.evaluationVars()
-	if rangeNum > -1 {
-		for i := 0; i < rangeNum; i++ {
-			err = lineIterator()
-			if err != nil {
-				return
-			}
-		}
-		return
-	}
-
-	for _, v := range vars {
-		err = lineIterator(common.NewVar("value", v.Value()))
-		if err != nil {
-			return
-		}
-	}
-
-	return
 }
 
 // evaluationVars returns either the variables or range that should be used for the foreach process.

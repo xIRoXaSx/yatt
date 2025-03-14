@@ -1,0 +1,38 @@
+# Functions can be called by the following syntax: {{function_name(arg1, arg2, ...)}}
+# Variables given to the function call do not need to be surrounded by braces (e.g.: function_name(var1, var2)).
+Examples: |
+  # fastplate var var1 = 1
+  # fastplate var var2 = 2
+  # fastplate var var3 = Some test string.
+  # fastplate var var4 = Some test string = with = extra = separators.
+  Add:               {{add(var1, var2, 20)}}
+  Subtract:          {{sub(20, var1, var2)}}
+  Multiplication:    {{mult(var1, var2, 20)}}
+  Power:             {{pow(var2, 3)}}
+  Square root:       {{sqrt(64)}}
+  Divide:            {{div(20, var1, var2}}
+  Max:               {{max(var1, 20, 50, var2)}}
+  Min:               {{min(var1, 20, 50, var2)}}
+  Modulo:            {{mod(3, 2)}}
+  Modulo with min:   {{modmin(9, 9, 2)}}
+  Env:               {{env(TEST)}}
+  Floor:             {{floor(1.75)}} 
+  FileBaseName:      {{fbasename()}}
+  FileName:          {{fname()}}
+  Ceil:              {{ceil(1.75)}}
+  Round:             {{round(1.75)}}
+  Fixed:             {{fixed(1.757575, 3)}}
+  Sha1Sum:           {{sha1(./testdata/src/partials/functions.yaml)}}
+  Sha256Sum:         {{sha256(./testdata/src/partials/functions.yaml)}}
+  Sha512Sum:         {{sha512(./testdata/src/partials/functions.yaml)}}
+  MD5:               {{md5(./testdata/src/partials/functions.yaml)}}
+  Lower:             {{lower(var3)}}  
+  Upper:             {{upper(var3)}}
+  Cap:               {{cap(var3)}}
+  Split:             {{split(var4, ' = ', 2)}}
+  Repeat:            {{repeat("hello there! ", 5)}}
+  Replace:           {{replace(var4, =, !)}}
+  Length:            {{len(12Characters)}} (Count chars)
+  Length:            {{len(UNSCOPED_VARS)}} (Count all unscoped variables)
+  Length:            {{len(UNSCOPED_VARS_FASTPLATE)}} (Count all unscoped variables of fastplate.var)
+  Variable:          {{var(dynamicVar, {{add(var1, var2)}})}}{{dynamicVar}}

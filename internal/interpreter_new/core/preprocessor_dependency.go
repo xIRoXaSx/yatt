@@ -1,12 +1,6 @@
-package interpreter
+package core
 
-import (
-	"fmt"
-)
-
-var (
-	errDependencyUnknownSyntax = fmt.Errorf("unknown syntax: %s <file path>", preprocessorImportName)
-)
+type dependencies map[string][]string
 
 // dependencyResolver stores information about a single import file.
 type dependencyResolver struct {

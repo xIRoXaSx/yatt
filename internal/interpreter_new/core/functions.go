@@ -1,4 +1,4 @@
-package interpreter
+package core
 
 import (
 	"errors"
@@ -37,12 +37,13 @@ const (
 	functionNameStringLength  = "length"
 )
 
-func (s *state) executeFunction(funcName interpreterFunc, fileName string, args [][]byte, additionalVars []common.Variable) (ret []byte, err error) {
+func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]byte, additionalVars []common.Variable) (ret []byte, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%s: %v", funcName, err)
 		}
 	}()
+
 	switch strings.ToLower(funcName.string()) {
 
 	// Crypt.
@@ -58,7 +59,8 @@ func (s *state) executeFunction(funcName interpreterFunc, fileName string, args 
 	// Internal.
 	case functionNameInternalVar:
 		return functions.Var(fileName, args, additionalVars, func(name, value []byte) error {
-			return s.setLocalVarByArgs(fileName, [][]byte{name, {'='}, value})
+			c.setLocalVar(fileName, common.NewVar(string(name), string(value)))
+			return nil
 		})
 
 	// Math.
@@ -97,8 +99,8 @@ func (s *state) executeFunction(funcName interpreterFunc, fileName string, args 
 	case functionNameStringReplace:
 		return functions.Replace(args)
 	case functionNameStringLength:
-		return functions.Length(args, len(s.varRegistryGlobal.entries), func(name string) int {
-			return len(s.varRegistryLocal.entries[strings.ToLower(name)])
+		return functions.Length(args, len(c.varRegistryGlobal.entries), func(name string) int {
+			return len(c.varRegistryLocal.entries[strings.ToLower(name)])
 		})
 
 	default:

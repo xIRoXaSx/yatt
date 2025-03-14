@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"strings"
 )
 
 type variable struct {
@@ -14,14 +13,6 @@ type Variable interface {
 	Name() string
 	Value() string
 }
-
-// func TemplateStart() []byte {
-// 	return []byte("{{")
-// }
-
-// func TemplateEnd() []byte {
-// 	return []byte("}}")
-// }
 
 func (v variable) Name() string {
 	return v.name
@@ -35,34 +26,89 @@ func NewVar(name, value string) Variable {
 	return variable{name: name, value: value}
 }
 
-// VarFromArgs parses a variable name and value from agrs and returns it.
-func VarFromArgs(tokens [][]byte) (v Variable) {
-	newVar := variable{name: string(tokens[0])}
-	val := bytes.SplitN(tokens[0], []byte{'='}, 2)
-	if len(val) == 1 {
-		// Syntax: x = y, x =y
-		val = bytes.Split(tokens[1], []byte{'='})
-		newVar.value = string(val[1])
-	} else {
-		// Syntax: x=y, x= y
-		newVar = variable{name: string(val[0]), value: string(val[1])}
+func VarFromArg(arg []byte) (_ variable) {
+	if len(arg) == 0 {
+		return
 	}
-	if len(tokens) > 2 {
-		// Skip equal sign.
-		ind := 1
-		if string(tokens[ind]) == "=" {
-			// Any case except syntax x= y
-			if len(tokens) > ind+1 {
-				// Skip next space.
-				ind++
+
+	tokens := bytes.SplitN(arg, []byte{'='}, 2)
+	if len(tokens) == 1 {
+		return
+	}
+
+	return variable{
+		name:  string(bytes.TrimSpace(tokens[0])),
+		value: string(bytes.TrimSpace(TrimQuotes(tokens[1]))),
+	}
+}
+
+// TODO: Add VarFromArgs as []byte instead.
+//		 This way we don't need to take care of token splits.
+
+// VarFromArgs parses a variable from args and returns it as [Variable].
+func VarFromArgs(args [][]byte) (v variable) {
+	if len(args) == 0 {
+		return
+	}
+
+	for idx, token := range args {
+		// Skip empty tokens.
+		if len(token) == 0 {
+			continue
+		}
+
+		// Syntax: "x = y".
+		if bytes.Equal(token, []byte{'='}) {
+			varNameIdx := 0
+			if idx > 0 {
+				varNameIdx = idx - 1
+			}
+			var remainder []byte
+			if idx < len(args)-1 {
+				// Skip the equal sign.
+				remainder = bytes.Join(args[idx+1:], []byte{' '})
+			}
+			// remainder could potentially be empty if we are at last loop index.
+			return variable{
+				name:  string(bytes.Join(args[:varNameIdx+1], []byte{})),
+				value: string(remainder),
 			}
 		}
-		subArgs := tokens[ind:]
-		str := make([]string, len(subArgs))
-		for j, s := range subArgs {
-			str[j] = string(s)
+
+		tok := bytes.SplitN(token, []byte{'='}, 2)
+		if len(tok) != 2 {
+			continue
 		}
-		newVar.value += strings.Join(str, " ")
+
+		name := tok[0]
+		value := tok[1]
+
+		// Syntax: "x= y".
+		if len(value) == 0 {
+			var remainder []byte
+			if idx+1 < len(args) {
+				remainder = bytes.Join(args[idx+1:], []byte{})
+			}
+			return variable{
+				name:  string(tok[0]),
+				value: string(remainder),
+			}
+		}
+
+		// Syntax: "x =y".
+		if len(name) == 0 {
+			return variable{
+				name:  string(bytes.Join(args[:idx], []byte{})),
+				value: string(value),
+			}
+		}
+
+		// Syntax: "x=y".
+		return variable{
+			name:  string(name),
+			value: string(value),
+		}
 	}
-	return newVar
+
+	return
 }
