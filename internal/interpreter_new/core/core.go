@@ -25,6 +25,7 @@ var (
 	templateEndBytes   = common.TemplateEnd()
 
 	errEmptyVariableParameter  = errors.New("variable name or value must not be empty")
+	errDependencyCyclic        = errors.New("cyclic dependency detected")
 	errDependencyUnknownSyntax = fmt.Errorf("unknown syntax: %s <file path>", preprocessorImportName)
 )
 

@@ -1,61 +1,124 @@
 package core
 
-type dependencies map[string][]string
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
-// dependencyResolver stores information about a single import file.
-type dependencyResolver struct {
-	deps    dependencies
-	visited map[string][]string
-}
-
-func newDependencyResolver() dependencyResolver {
-	return dependencyResolver{
-		deps:    make(dependencies, 0),
-		visited: make(map[string][]string, 0),
+func (c *Core) ImportPathCheckCyclicDependencies(startPath string) (err error) {
+	file, err := os.Open(startPath)
+	if err != nil {
+		return
 	}
-}
+	defer func() {
+		cErr := file.Close()
+		if err == nil {
+			err = cErr
+			return
+		}
+		c.l.Err(cErr).Str("file", startPath).Msg("closing file reader")
+	}()
 
-func (d *dependencyResolver) addDependency(origin, lookupPath string) {
-	d.deps[origin] = append(d.deps[origin], lookupPath)
-}
-
-func (d *dependencyResolver) isAlreadyVisited(lookupPath, destination string) (visited bool) {
-	visitedPaths := d.visited[lookupPath]
-	if len(visitedPaths) == 0 {
-		return false
-	}
-
-	for _, vp := range visitedPaths {
-		if vp == destination {
-			return true
+	var (
+		// Limits reads to 65536 bytes per line.
+		scanner = bufio.NewScanner(file)
+	)
+	for scanner.Scan() {
+		err = scanner.Err()
+		if err != nil {
+			return
 		}
 
-		visited = d.isAlreadyVisited(vp, destination)
-		if visited {
+		line := bytes.TrimSpace(scanner.Bytes())
+		prefix := c.matchedPrefixToken(line)
+		if len(prefix) == 0 {
+			continue
+		}
+
+		statement := trimLine(line, prefix)
+		split := bytes.Split(statement, []byte{' '})
+		if len(split) == 0 {
+			err = errDependencyUnknownSyntax
+			return
+		}
+
+		pd := &PreprocessorDirective{
+			name:     string(split[0]),
+			fileName: startPath,
+			args:     split[1:],
+			buf:      &bytes.Buffer{},
+		}
+		err = c.walkDependency(pd)
+		if err != nil {
 			return
 		}
 	}
-
 	return
 }
 
-// dependenciesAreCyclic traverses the whole dependency tree to look if it contains a cycle.
-func (d *dependencyResolver) dependenciesAreCyclic(origin, lookupPath string) (cyclic bool) {
-	d.visited[origin] = append(d.visited[origin], lookupPath)
-	deps := d.deps[lookupPath]
-	for _, dep := range deps {
-		// Direct neighbor.
-		if dep == origin {
-			return true
+func (c *Core) walkDependency(pd *PreprocessorDirective) (err error) {
+	if len(pd.args) != 1 {
+		return errDependencyUnknownSyntax
+	}
+
+	sourcePath := pd.fileName
+	importingPath := filepath.Clean(string(pd.args[0]))
+	c.depsResolver.addDependency(sourcePath, importingPath)
+	importFile, err := os.Open(importingPath)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cErr := importFile.Close()
+		if cErr != nil {
+			if err == nil {
+				err = cErr
+				return
+			}
+			c.l.Err(cErr).Str("path", importingPath).Msg("closing dependency file on defer")
+		}
+	}()
+
+	// Limits reads to 65536 bytes per line.
+	scanner := bufio.NewScanner(importFile)
+	for scanner.Scan() {
+		err = scanner.Err()
+		if err != nil {
+			return
 		}
 
-		v := d.isAlreadyVisited(dep, origin)
-		if v {
-			return true
+		line := bytes.TrimSpace(scanner.Bytes())
+		prefix := c.matchedPrefixToken(line)
+		if len(prefix) == 0 {
+			continue
 		}
 
-		cyclic = d.dependenciesAreCyclic(lookupPath, dep)
+		// Check if line contains import statement.
+		importSplit := bytes.Split(line, fmt.Appendf(nil, "%s %s", prefix, preprocessorImportName))
+		if len(importSplit) == 0 {
+			continue
+		} else if len(importSplit) < 2 {
+			// Incorrect usage of the import statement.
+			return errDependencyUnknownSyntax
+		}
+
+		// We got the path to import.
+		// Now we need to check if the file does also import the current one.
+		foundImportPath := bytes.TrimSpace(importSplit[1])
+		importPathOfLine := filepath.Clean(string(bytes.TrimSpace(foundImportPath)))
+		cyclic := c.depsResolver.CheckForCyclicDependencies(sourcePath, importPathOfLine)
 		if cyclic {
+			return fmt.Errorf("%w: %s -> %s", errDependencyCyclic, sourcePath, importingPath)
+		}
+
+		err = c.walkDependency(&PreprocessorDirective{
+			fileName: importingPath,
+			args:     [][]byte{[]byte(importPathOfLine)},
+		})
+		if err != nil {
 			return
 		}
 	}

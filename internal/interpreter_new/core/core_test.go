@@ -23,64 +23,110 @@ func TestDependenciesAreCyclic(t *testing.T) {
 		imp string
 	}
 
-	type testCase struct {
-		ic   importCase
-		fail bool
+	type testCaseWrapper struct {
+		fail  bool
+		cases []importCase
 	}
 
-	testCases := [][]testCase{
+	testCases := []testCaseWrapper{
 		{
-			{ic: importCase{src: "fileA", imp: "fileB"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileA"}, fail: true},
+			fail: true,
+			cases: []importCase{
+				{src: "fileA", imp: "fileB"},
+				{src: "fileB", imp: "fileA"},
+			},
 		},
 		{
-			{ic: importCase{src: "fileA", imp: "fileB"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileC"}, fail: true},
-			{ic: importCase{src: "fileC", imp: "fileA"}, fail: true},
+			fail: true,
+			cases: []importCase{
+				{src: "fileA", imp: "fileB"},
+				{src: "fileB", imp: "fileC"},
+				{src: "fileC", imp: "fileA"},
+			},
 		},
 		{
-			{ic: importCase{src: "fileA", imp: "fileB"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileC"}, fail: true},
-			{ic: importCase{src: "fileC", imp: "fileD"}, fail: true},
-			{ic: importCase{src: "fileC", imp: "fileE"}, fail: true},
-			{ic: importCase{src: "fileE", imp: "fileA"}, fail: true},
+			fail: true,
+			cases: []importCase{
+				{src: "fileA", imp: "fileB"},
+				{src: "fileB", imp: "fileC"},
+				{src: "fileC", imp: "fileD"},
+				{src: "fileC", imp: "fileE"},
+				{src: "fileE", imp: "fileA"},
+			},
 		},
 		{
-			{ic: importCase{src: "fileA", imp: "fileB"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileC"}, fail: true},
-			{ic: importCase{src: "fileC", imp: "fileD"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileF"}, fail: true},
-			{ic: importCase{src: "fileF", imp: "fileH"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileG"}, fail: true},
-			{ic: importCase{src: "fileD", imp: "fileB"}, fail: true},
+			fail: true,
+			cases: []importCase{
+				{src: "fileA", imp: "fileB"},
+				{src: "fileB", imp: "fileC"},
+				{src: "fileC", imp: "fileD"},
+				{src: "fileB", imp: "fileF"},
+				{src: "fileF", imp: "fileH"},
+				{src: "fileB", imp: "fileG"},
+				{src: "fileD", imp: "fileB"},
+			},
 		},
 		{
-			{ic: importCase{src: "fileA", imp: "fileB"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileC"}, fail: true},
-			{ic: importCase{src: "fileC", imp: "fileD"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileF"}, fail: true},
-			{ic: importCase{src: "fileF", imp: "fileH"}, fail: true},
-			{ic: importCase{src: "fileB", imp: "fileG"}, fail: true},
-			{ic: importCase{src: "fileD", imp: "fileC"}, fail: true},
+			fail: true,
+			cases: []importCase{
+				{src: "fileA", imp: "fileB"},
+				{src: "fileB", imp: "fileC"},
+				{src: "fileC", imp: "fileD"},
+				{src: "fileB", imp: "fileF"},
+				{src: "fileF", imp: "fileH"},
+				{src: "fileB", imp: "fileG"},
+				{src: "fileD", imp: "fileC"},
+			},
 		},
 		{
-			{ic: importCase{src: "fileA", imp: "fileB"}},
-			{ic: importCase{src: "fileB", imp: "fileC"}},
-			{ic: importCase{src: "fileC", imp: "fileD"}},
-			{ic: importCase{src: "fileC", imp: "fileF"}},
-			{ic: importCase{src: "fileC", imp: "fileG"}},
-			{ic: importCase{src: "fileF", imp: "fileH"}},
+			fail: true,
+			cases: []importCase{
+				{src: "fileA", imp: "fileB"},
+				{src: "fileB", imp: "fileC"},
+				{src: "fileC", imp: "fileD"},
+				{src: "fileD", imp: "fileE"},
+				{src: "fileE", imp: "fileC"},
+				{src: "fileB", imp: "fileF"},
+				{src: "fileF", imp: "fileH"},
+				{src: "fileB", imp: "fileG"},
+			},
+		},
+		{
+			cases: []importCase{
+				{src: "fileA", imp: "fileB"},
+				{src: "fileB", imp: "fileC"},
+				{src: "fileC", imp: "fileD"},
+				{src: "fileC", imp: "fileF"},
+				{src: "fileC", imp: "fileG"},
+				{src: "fileF", imp: "fileH"},
+				{src: "fileF", imp: "fileI"},
+				{src: "fileG", imp: "fileJ"},
+				{src: "fileY", imp: "fileZ"},
+			},
 		},
 	}
-	for i, tcs := range testCases {
-		startCase := tcs[0]
+
+	for i, tcw := range testCases {
 		dr := newDependencyResolver()
-		for _, tc := range tcs {
-			dr.addDependency(tc.ic.src, tc.ic.imp)
+
+		// Add all dependencies accordingly.
+		for _, tc := range tcw.cases {
+			dr.addDependency(tc.src, tc.imp)
 		}
-		ok := dr.dependenciesAreCyclic(startCase.ic.src, startCase.ic.imp)
-		r.Equal(t, ok, startCase.fail, "case=%d", i)
+
+		startCase := tcw.cases[0]
+		ok := dr.CheckForCyclicDependencies(startCase.src, startCase.imp)
+		r.Equal(t, tcw.fail, ok, "case=%d", i)
 	}
+}
+
+func TestImportPaths(t *testing.T) {
+	t.Parallel()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	c := New(l, []string{"# fastplate"}, Options{})
+	err := c.ImportPathCheckCyclicDependencies("testdata/imports/fileA.txt")
+	r.ErrorIs(t, err, errDependencyCyclic)
 }
 
 func TestSetLocalVarByArg(t *testing.T) {
