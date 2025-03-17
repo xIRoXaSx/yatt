@@ -1,0 +1,12 @@
+# This is a line above the ignore statement.
+test:
+  # fastplate ignore
+  ignored: |
+    These lines should be ignored.
+
+    # fastplate ignore
+      Nested ignore statements should always be ignored because of the first evaluated ignore preprocessor.
+    # fastplate ignoreend
+    Since the first ignore statement is still in use, this line is also not output.
+  # fastplate ignoreend
+  finished: This line should be visible at the end.

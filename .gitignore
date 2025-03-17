@@ -1,5 +1,5 @@
 /.vscode/
 /.idea/
-/internal/interpreter/testdata/dest
 
 bin/
+**/testdata/**/out

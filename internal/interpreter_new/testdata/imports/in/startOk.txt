@@ -1,0 +1,3 @@
+Hello from from startOk.txt!
+    # fastplate import ./testdata/imports/in/myTestImportOk.txt
+End of startOk.txt

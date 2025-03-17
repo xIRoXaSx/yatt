@@ -84,7 +84,7 @@ const (
 
 func (c *Core) preprocessorState(fileName string) (t recurringToken) {
 	// Line does not contain one of the required prefixes.
-	if c.ignoreIndex[fileName] == ignoreStateOpen {
+	if c.ignoreIndex[fileName].isActive() {
 		return RecurringTokenIgnore
 	}
 

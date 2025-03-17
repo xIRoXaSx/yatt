@@ -41,12 +41,7 @@ func (c *Core) foreachStart(pd *PreprocessorDirective) (err error) {
 }
 
 func (c *Core) foreachEnd(pd *PreprocessorDirective) (err error) {
-	defer func() {
-		if err == nil && c.foreachBuff.cursor > 0 {
-			c.foreachBuff.cursor--
-		}
-	}()
-
+	c.foreachBuff.cursor--
 	return c.foreachEvaluate(pd.buf, pd.indent)
 }
 
@@ -80,7 +75,7 @@ func (c *Core) foreachEvaluate(dst io.Writer, indent []byte) (err error) {
 		return
 	}
 
-	vars, rangeNum := c.foreachBuff.evaluationVars()
+	vars, rangeNum := c.foreachBuff.evaluationVars(c)
 	if rangeNum > -1 {
 		for i := 0; i < rangeNum; i++ {
 			err = lineIterator()
@@ -109,9 +104,8 @@ type foreachBufferStack struct {
 	// cursor is the index for the corresponding foreachBuffer state.
 	cursor uint
 	// Each "foreach start" directive creates a new state, since foreach statements can be nested.
-	state     []foreachBufferState
-	fileName  string
-	varGetter variableGetter
+	state    []foreachBufferState
+	fileName string
 }
 
 func newForeachBufferStack(fileName string) foreachBufferStack {
@@ -141,15 +135,11 @@ func (f *foreachBufferState) varLookupForeach(name string) (v common.Variable) {
 	return varLookupRegistry(&f.varRegistry, variableForeachRegister, name)
 }
 
-func (f *foreachBufferStack) isActive() bool {
-	return f.cursor > 0
-}
-
 // evaluationVars returns either the variables or range that should be used for the foreach process.
 // rangeNum is greater than -1 if the current stack has exact one arg (value or variable), which we then try to parse to an integer.
 // rangeNum is 0 if the current stack has exact one arg (value or variable), which we tried to parse but failed to do so.
 // Otherwise we try to get any variable that can be found in eihter the foreach, local or the global registry.
-func (f *foreachBufferStack) evaluationVars() (vs []common.Variable, rangeNum int) {
+func (f *foreachBufferStack) evaluationVars(vg variableGetter) (vs []common.Variable, rangeNum int) {
 	stack := f.state[f.cursor]
 	variables := make([]common.Variable, 0)
 	argsLen := len(stack.args)
@@ -167,7 +157,7 @@ func (f *foreachBufferStack) evaluationVars() (vs []common.Variable, rangeNum in
 			return
 		}
 
-		vars := f.varLookupRecursive(argStr)
+		vars := f.varLookupRecursive(argStr, vg)
 		if len(vars) == 1 && argsLen == 1 {
 			// Looks like the user wants to range over the amount specified in a variable.
 			rangeNum = 0
@@ -187,7 +177,7 @@ func (f *foreachBufferStack) evaluationVars() (vs []common.Variable, rangeNum in
 	return variables, -1
 }
 
-func (f *foreachBufferStack) varLookupRecursive(name string) (_ []common.Variable) {
+func (f *foreachBufferStack) varLookupRecursive(name string, vg variableGetter) (_ []common.Variable) {
 	for _, state := range f.state {
 		vs := state.varLookupForeach(name)
 		if vs.Name() == "" {
@@ -198,7 +188,7 @@ func (f *foreachBufferStack) varLookupRecursive(name string) (_ []common.Variabl
 	}
 
 	// Foreach variable not found, try getting a local variable.
-	vs := f.varGetter.varLookupLocal(f.fileName, name)
+	vs := vg.varLookupLocal(f.fileName, name)
 	if vs.Name() != "" {
 		return []common.Variable{vs}
 	}
@@ -206,15 +196,15 @@ func (f *foreachBufferStack) varLookupRecursive(name string) (_ []common.Variabl
 	// Try to find it against a global var file name.
 	vArgs := strings.Split(name, variableGlobalKeyFile)
 	if len(vArgs) > 1 {
-		vs := f.varGetter.varsLookupGlobalFile(vArgs[1])
+		vs := vg.varsLookupGlobalFile(vArgs[1])
 		return vs
 	}
 
 	// Last resort, try global vars.
 	if name == variableGlobalKey {
-		return f.varGetter.varsLookupGlobal()
+		return vg.varsLookupGlobal()
 	}
-	gVars := f.varGetter.varsLookupGlobal()
+	gVars := vg.varsLookupGlobal()
 	for _, v := range gVars {
 		if v.Name() == name {
 			return []common.Variable{v}

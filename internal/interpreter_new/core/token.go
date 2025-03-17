@@ -49,6 +49,7 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent, 
 		if err != nil {
 			return
 		}
+		// FIXME: Imports may require indentation but currently this results in too many indentations (x2).
 		indents := append(parentLineIndent, currentLineIndent...)
 		ret = append(indents, ret...)
 		_, err = buf.Write(append(ret, lineEnding...))

@@ -22,11 +22,11 @@ Examples: |
   Ceil:              {{ceil(1.75)}}
   Round:             {{round(1.75)}}
   Fixed:             {{fixed(1.757575, 3)}}
-  Sha1Sum:           {{sha1(./testdata/src/partials/functions.yaml)}}
-  Sha256Sum:         {{sha256(./testdata/src/partials/functions.yaml)}}
-  Sha512Sum:         {{sha512(./testdata/src/partials/functions.yaml)}}
-  MD5:               {{md5(./testdata/src/partials/functions.yaml)}}
-  Lower:             {{lower(var3)}}  
+  Sha1Sum:           {{sha1(./testdata/interpret/in/partials/functions.yaml)}}
+  Sha256Sum:         {{sha256(./testdata/interpret/in/partials/functions.yaml)}}
+  Sha512Sum:         {{sha512(./testdata/interpret/in/partials/functions.yaml)}}
+  MD5:               {{md5(./testdata/interpret/in/partials/functions.yaml)}}
+  Lower:             {{lower(var3)}}
   Upper:             {{upper(var3)}}
   Cap:               {{cap(var3)}}
   Split:             {{split(var4, ' = ', 2)}}

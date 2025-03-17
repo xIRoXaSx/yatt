@@ -1,20 +1,21 @@
 package core
 
-type ignoreState uint8
-
 const (
-	ignoreStateClose ignoreState = iota
-	ignoreStateOpen
-
 	variableRegistryGlobalRegister = "global"
 )
 
-func (c *Core) ignoreStart(pd *PreprocessorDirective) (err error) {
-	c.ignoreIndex[pd.fileName] = ignoreStateOpen
-	return
+type ignoreState int
+
+func (i ignoreState) isActive() bool {
+	return i > 0
 }
 
-func (c *Core) ignoreEnd(pd *PreprocessorDirective) (err error) {
-	c.ignoreIndex[pd.fileName] = ignoreStateClose
-	return
+func (c *Core) ignoreStart(pd *PreprocessorDirective) error {
+	c.ignoreIndex[pd.fileName]++
+	return nil
+}
+
+func (c *Core) ignoreEnd(pd *PreprocessorDirective) error {
+	c.ignoreIndex[pd.fileName]--
+	return nil
 }

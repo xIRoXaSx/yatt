@@ -41,12 +41,16 @@ func (c *Core) ImportPathCheckCyclicDependencies(startPath string) (err error) {
 		statement := trimLine(line, prefix)
 		split := bytes.Split(statement, []byte{' '})
 		if len(split) == 0 {
-			err = errDependencyUnknownSyntax
-			return
+			continue
+		}
+
+		preprocessor := bytes.TrimSpace(split[0])
+		if string(preprocessor) != directiveNameImport {
+			continue
 		}
 
 		pd := &PreprocessorDirective{
-			name:     string(split[0]),
+			name:     string(preprocessor),
 			fileName: startPath,
 			args:     split[1:],
 			buf:      &bytes.Buffer{},
