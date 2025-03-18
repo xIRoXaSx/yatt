@@ -1,6 +1,9 @@
 package functions
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
@@ -21,5 +24,25 @@ func Var(fileName string, args [][]byte, additionalVars []common.Variable, local
 	}
 
 	err = localVarSetter(arg0, arg1)
+	return
+}
+
+func Env(args [][]byte) (ret []byte, err error) {
+	err = assertArgsLengthExact(args, 1)
+	if err != nil {
+		return
+	}
+
+	ret = []byte(os.Getenv(string(args[0])))
+	return
+}
+
+func FileBaseName(path string) (ret []byte, err error) {
+	ret = []byte(filepath.Base(path))
+	return
+}
+
+func FileName(path string) (ret []byte, err error) {
+	ret = []byte(path)
 	return
 }

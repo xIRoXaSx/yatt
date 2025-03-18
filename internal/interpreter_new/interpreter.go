@@ -147,7 +147,7 @@ func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {
 		Writer: buf,
 	}
 	// Write to the buffer to ensure that files don't get partially written.
-	err = i.core.Interpret(nil, interFile)
+	err = i.core.Interpret(interFile)
 	if err != nil {
 		return
 	}

@@ -15,7 +15,10 @@ const (
 	functionNameCryptSHA512 = "sha512"
 	functionNameCryptMD5    = "md5"
 
-	functionNameInternalVar = "var"
+	functionNameInternalEnv          = "env"
+	functionNameInternalFileBaseName = "fbasename"
+	functionNameInternalFileName     = "fname"
+	functionNameInternalVar          = "var"
 
 	functionNameMathAdd   = "add"
 	functionNameMathSub   = "sub"
@@ -31,10 +34,13 @@ const (
 	functionNameMathMin   = "min"
 	functionNameMathMod   = "mod"
 
-	functionNameStringSplit   = "split"
-	functionNameStringRepeat  = "repeat"
-	functionNameStringReplace = "replace"
-	functionNameStringLength  = "length"
+	functionNameStringCapitalize = "capitalize"
+	functionNameStringRepeat     = "repeat"
+	functionNameStringReplace    = "replace"
+	functionNameStringSplit      = "split"
+	functionNameStringToLower    = "lower"
+	functionNameStringToUpper    = "upper"
+	functionNameStringLength     = "len"
 )
 
 func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]byte, additionalVars []common.Variable) (ret []byte, err error) {
@@ -57,6 +63,12 @@ func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]by
 		return functions.MD5(args)
 
 	// Internal.
+	case functionNameInternalEnv:
+		return functions.Env(args)
+	case functionNameInternalFileBaseName:
+		return functions.FileBaseName(fileName)
+	case functionNameInternalFileName:
+		return functions.FileName(fileName)
 	case functionNameInternalVar:
 		return functions.Var(fileName, args, additionalVars, func(name, value []byte) error {
 			c.setLocalVar(fileName, common.NewVar(string(name), string(value)))
@@ -92,12 +104,18 @@ func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]by
 		return functions.Mod(args)
 
 	// String.
-	case functionNameStringSplit:
-		return functions.Split(args)
+	case functionNameStringCapitalize:
+		return functions.Capitalize(args)
 	case functionNameStringRepeat:
 		return functions.Repeat(args)
 	case functionNameStringReplace:
 		return functions.Replace(args)
+	case functionNameStringSplit:
+		return functions.Split(args)
+	case functionNameStringToLower:
+		return functions.ToLower(args)
+	case functionNameStringToUpper:
+		return functions.ToUpper(args)
 	case functionNameStringLength:
 		return functions.Length(args, len(c.varRegistryGlobal.entries), func(name string) int {
 			return len(c.varRegistryLocal.entries[strings.ToLower(name)])

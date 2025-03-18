@@ -6,24 +6,17 @@ import (
 	"strings"
 
 	"github.com/xiroxasx/fastplate/internal/common"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-func Split(args [][]byte) (ret []byte, err error) {
-	err = assertArgsLengthExact(args, 3)
+func Capitalize(args [][]byte) (ret []byte, err error) {
+	err = assertArgsLengthExact(args, 1)
 	if err != nil {
 		return
 	}
 
-	ind, err := strconv.Atoi(string(args[2]))
-	if err != nil {
-		return
-	}
-	v := bytes.Split(args[0], common.TrimQuotes(args[1]))
-	if len(v) < ind {
-		ret = v[0]
-		return
-	}
-	ret = v[ind]
+	ret = cases.Title(language.English, cases.NoLower).Bytes(args[0])
 	return
 }
 
@@ -52,6 +45,45 @@ func Replace(args [][]byte) (ret []byte, err error) {
 		common.TrimQuotes(args[1]),
 		common.TrimQuotes(args[2]),
 	)
+	return
+}
+
+func Split(args [][]byte) (ret []byte, err error) {
+	err = assertArgsLengthExact(args, 3)
+	if err != nil {
+		return
+	}
+
+	ind, err := strconv.Atoi(string(args[2]))
+	if err != nil {
+		return
+	}
+	v := bytes.Split(args[0], common.TrimQuotes(args[1]))
+	if len(v) < ind {
+		ret = v[0]
+		return
+	}
+	ret = v[ind]
+	return
+}
+
+func ToLower(args [][]byte) (ret []byte, err error) {
+	err = assertArgsLengthExact(args, 1)
+	if err != nil {
+		return
+	}
+
+	ret = bytes.ToLower(args[0])
+	return
+}
+
+func ToUpper(args [][]byte) (ret []byte, err error) {
+	err = assertArgsLengthExact(args, 1)
+	if err != nil {
+		return
+	}
+
+	ret = bytes.ToUpper(args[0])
 	return
 }
 

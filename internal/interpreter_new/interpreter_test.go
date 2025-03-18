@@ -88,7 +88,9 @@ func TestFileInterpretation(t *testing.T) {
 		out.Close()
 	}()
 
-	r.NoError(t, ip.core.Interpret(nil, core.InterpreterFile{
+	err = os.Setenv("TEST", "environment_variable")
+	r.NoError(t, err)
+	r.NoError(t, ip.core.Interpret(core.InterpreterFile{
 		Name:   rootFileIn,
 		RC:     f,
 		Writer: out,
@@ -118,7 +120,7 @@ func BenchmarkFileInterpretation(b *testing.B) {
 		r.NoError(b, err)
 
 		b.StartTimer()
-		r.NoError(b, ip.core.Interpret(nil, core.InterpreterFile{
+		r.NoError(b, ip.core.Interpret(core.InterpreterFile{
 			Name:   path,
 			RC:     f,
 			Writer: &bytes.Buffer{},

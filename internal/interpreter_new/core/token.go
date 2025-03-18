@@ -8,13 +8,12 @@ import (
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
-func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent, parentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
+func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
 	lineDisplayNum := lineNum + 1
-	lineNoIndent := line[len(currentLineIndent):]
-	prefix := c.matchedPrefixToken(lineNoIndent)
+	prefix := c.matchedPrefixToken(line)
 	if len(prefix) > 0 {
 		// Trim the prefix and check against internal commands.
-		statement := trimLine(lineNoIndent, prefix)
+		statement := trimLine(line, prefix)
 		split := bytes.Split(statement, []byte{' '})
 		if len(split) == 0 {
 			return
@@ -24,7 +23,7 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent, 
 			string(split[0]),
 			filepath.Clean(fileName),
 			split[1:],
-			append(currentLineIndent, parentLineIndent...),
+			currentLineIndent,
 		)
 		err = c.Preprocess(pd, lineDisplayNum, func(pd *PreprocessorDirective) error {
 			return c.importPath(pd)
@@ -49,9 +48,7 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent, 
 		if err != nil {
 			return
 		}
-		// FIXME: Imports may require indentation but currently this results in too many indentations (x2).
-		indents := append(parentLineIndent, currentLineIndent...)
-		ret = append(indents, ret...)
+		ret = append(currentLineIndent, ret...)
 		_, err = buf.Write(append(ret, lineEnding...))
 		if err != nil {
 			return

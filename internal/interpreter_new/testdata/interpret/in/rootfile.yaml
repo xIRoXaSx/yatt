@@ -20,10 +20,10 @@ ImportExample:
   # ~-~-~-~-~-~-~-~-~-~-~-~-
   # You can ignore lines via the ignore start / end syntax!
   # This is pretty handy if you don't want certain sections in the output file.
-  # fastplate ignore start
+  # fastplate ignore
   #   These two lines will not show up in the output file.
   #   This also allows for template specific documentation.
-  # fastplate ignore end
+  # fastplate ignoreend
 
   # Using variables
   # ~-~-~-~-~-~-~-~

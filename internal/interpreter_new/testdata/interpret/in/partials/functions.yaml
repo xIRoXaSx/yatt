@@ -1,5 +1,5 @@
-# Functions can be called by the following syntax: {{function_name(arg1, arg2, ...)}}
-# Variables given to the function call do not need to be surrounded by braces (e.g.: function_name(var1, var2)).
+# Functions can be called by surrounding them with braces.
+# Variables given to the function call do not need to be surrounded by braces.
 Examples: |
   # fastplate var var1 = 1
   # fastplate var var2 = 2
@@ -14,9 +14,8 @@ Examples: |
   Max:               {{max(var1, 20, 50, var2)}}
   Min:               {{min(var1, 20, 50, var2)}}
   Modulo:            {{mod(3, 2)}}
-  Modulo with min:   {{modmin(9, 9, 2)}}
   Env:               {{env(TEST)}}
-  Floor:             {{floor(1.75)}} 
+  Floor:             {{floor(1.75)}}
   FileBaseName:      {{fbasename()}}
   FileName:          {{fname()}}
   Ceil:              {{ceil(1.75)}}
@@ -28,7 +27,7 @@ Examples: |
   MD5:               {{md5(./testdata/interpret/in/partials/functions.yaml)}}
   Lower:             {{lower(var3)}}
   Upper:             {{upper(var3)}}
-  Cap:               {{cap(var3)}}
+  Capitalize:        {{capitalize(var3)}}
   Split:             {{split(var4, ' = ', 2)}}
   Repeat:            {{repeat("hello there! ", 5)}}
   Replace:           {{replace(var4, =, !)}}

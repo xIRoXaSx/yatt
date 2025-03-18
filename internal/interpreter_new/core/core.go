@@ -99,14 +99,14 @@ func New(l zerolog.Logger, prefixes []string, opts Options) *Core {
 	}
 }
 
-func (c *Core) Interpret(parentLineIndent []byte, file InterpreterFile) (err error) {
-	return c.interpret(file, parentLineIndent)
+func (c *Core) Interpret(file InterpreterFile) (err error) {
+	return c.interpret(file, nil)
 }
 
 // interpret tries to interpret the scanned content of file.rc.
 // If the ReadCloser content contains available tokens, it tries to resolve them and writes it,
 // along with the prepended indentParent, to buf.
-func (c *Core) interpret(file InterpreterFile, parentLineIndent []byte) (err error) {
+func (c *Core) interpret(file InterpreterFile, additionalIndent []byte) (err error) {
 	// Always ensure to close the file's rc.
 	defer func() {
 		cErr := file.RC.Close()
@@ -135,10 +135,12 @@ func (c *Core) interpret(file InterpreterFile, parentLineIndent []byte) (err err
 		currentLineIndent := make([]byte, 0)
 		if c.opts.PreserveIndent {
 			// Line indents are required, check current line indents.
-			currentLineIndent = common.GetLeadingWhitespace(line)
+			lineIndet := common.GetLeadingWhitespace(line)
+			currentLineIndent = append(lineIndet, additionalIndent...)
+			line = line[len(lineIndet):]
 		}
 
-		err = c.searchTokensAndExecute(file.Name, line, currentLineIndent, parentLineIndent, file.Writer, lineNum+1)
+		err = c.searchTokensAndExecute(file.Name, line, currentLineIndent, file.Writer, lineNum+1)
 		if err != nil {
 			return
 		}
