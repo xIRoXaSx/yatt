@@ -9,7 +9,6 @@ import (
 )
 
 func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
-	lineDisplayNum := lineNum + 1
 	prefix := c.matchedPrefixToken(line)
 	if len(prefix) > 0 {
 		// Trim the prefix and check against internal commands.
@@ -19,13 +18,19 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 			return
 		}
 
+		args := make([][]byte, len(split[1:]))
+		for i := range args {
+			args[i] = bytes.TrimRight(split[i+1], ",")
+		}
+
 		pd := newPreprocessorDirective(
 			string(split[0]),
 			filepath.Clean(fileName),
-			split[1:],
+			lineNum,
+			args,
 			currentLineIndent,
 		)
-		err = c.Preprocess(pd, lineDisplayNum, func(pd *PreprocessorDirective) error {
+		err = c.Preprocess(pd, func(pd *PreprocessorDirective) error {
 			return c.importPath(pd)
 		})
 		if err != nil {
@@ -41,18 +46,26 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 		// Currently moving inside a ignore block, skipping line...
 		return
 
+	case RecurringTokenForeach:
+		if c.opts.PreserveIndent {
+			line = append(currentLineIndent, line...)
+		}
+		return c.feb.WriteLineToBuffer(line)
+
 	default:
-		// No prefix found, try to resolve variables and functions if there are any.
-		var ret []byte
-		ret, err = c.resolve(fileName, line, nil)
-		if err != nil {
-			return
-		}
-		ret = append(currentLineIndent, ret...)
-		_, err = buf.Write(append(ret, lineEnding...))
-		if err != nil {
-			return
-		}
+		break
+	}
+
+	// No prefix found, try to resolve variables and functions if there are any.
+	var ret []byte
+	ret, err = c.resolve(fileName, line, nil)
+	if err != nil {
+		return
+	}
+	ret = append(currentLineIndent, ret...)
+	_, err = buf.Write(append(ret, lineEnding...))
+	if err != nil {
+		return
 	}
 
 	return
@@ -153,4 +166,17 @@ func unwrapFunc(b []byte) (fncName parserFunc, args [][]byte) {
 		args[j] = bytes.TrimSpace(args[j])
 	}
 	return
+}
+
+func unwrapVar(token []byte) (t []byte) {
+	tokens := bytes.Split(token, templateStartBytes)
+	if len(tokens) == 1 {
+		return token
+	}
+	match := bytes.SplitN(tokens[1], templateEndBytes, 2)
+	if len(match) == 2 {
+		// Token contains variable name, return it.
+		return match[0]
+	}
+	return token
 }

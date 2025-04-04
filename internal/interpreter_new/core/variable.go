@@ -115,6 +115,17 @@ func varLookupRegistry(reg *variableRegistry, register, varName string) (v commo
 	return variable{}
 }
 
+func varsLookupRegistry(reg *variableRegistry) (v []common.Variable) {
+	reg.Lock()
+	defer reg.Unlock()
+
+	for _, vs := range reg.entries {
+		v = append(v, vs...)
+	}
+
+	return
+}
+
 //
 // Helper.
 //

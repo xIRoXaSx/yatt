@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/fastplate/internal/interpreter_new/foreach"
 )
 
 const (
@@ -36,11 +37,9 @@ type Core struct {
 
 	ignoreIndex  ignoreIndexes
 	depsResolver dependencyResolver
-	foreachBuff  foreachBufferStack
-	// foreachIndex       foreachIndexes
-	varRegistryLocal      variableRegistry
-	varRegistryGlobal     variableRegistry // TODO: Currently merging unscopedVarIndexes into this as well!
-	varRegistryGlobalFile variableRegistry // TODO: Currently merging unscopedVarIndexes into this as well!
+	feb          foreach.Buffer
+
+	registries
 
 	*sync.Mutex
 }
@@ -50,6 +49,13 @@ type Options struct {
 }
 
 type ignoreIndexes map[string]ignoreState
+
+type registries struct {
+	varRegistryForeach    []variableRegistry // TODO: Each nested variable can access vars from parents but not their children.
+	varRegistryLocal      variableRegistry
+	varRegistryGlobal     variableRegistry
+	varRegistryGlobalFile variableRegistry
+}
 
 type variableRegistry struct {
 	entries map[string]vars
@@ -81,22 +87,40 @@ func New(l zerolog.Logger, prefixes []string, opts Options) *Core {
 		opts:         opts,
 		prefixes:     ps,
 		ignoreIndex:  make(ignoreIndexes, 0),
-		foreachBuff:  newForeachBufferStack(""),
+		feb:          foreach.NewForeachBuffer(lineEnding),
 		Mutex:        &sync.Mutex{},
 		depsResolver: newDependencyResolver(),
-		varRegistryLocal: variableRegistry{
-			entries: make(map[string]vars, 0),
-			Mutex:   &sync.Mutex{},
-		},
-		varRegistryGlobal: variableRegistry{
-			entries: make(map[string]vars, 0),
-			Mutex:   &sync.Mutex{},
-		},
-		varRegistryGlobalFile: variableRegistry{
-			entries: make(map[string]vars, 0),
-			Mutex:   &sync.Mutex{},
+		registries: registries{
+			varRegistryLocal: variableRegistry{
+				entries: make(map[string]vars, 0),
+				Mutex:   &sync.Mutex{},
+			},
+			varRegistryGlobal: variableRegistry{
+				entries: make(map[string]vars, 0),
+				Mutex:   &sync.Mutex{},
+			},
+			varRegistryGlobalFile: variableRegistry{
+				entries: make(map[string]vars, 0),
+				Mutex:   &sync.Mutex{},
+			},
 		},
 	}
+}
+
+func (c *Core) VarLookupLocal(register, name string) common.Variable {
+	return c.varLookupLocal(register, name)
+}
+
+func (c *Core) VarLookupForeach(register, name string, stateIdx int) common.Variable {
+	return c.varLookupForeach(register, name, stateIdx)
+}
+
+func (c *Core) VarsLookupGlobalFile(name string) []common.Variable {
+	return c.varsLookupGlobalFile(name)
+}
+
+func (c *Core) VarsLookupGlobal() []common.Variable {
+	return varsLookupRegistry(&c.varRegistryGlobal)
 }
 
 func (c *Core) Interpret(file InterpreterFile) (err error) {
@@ -131,6 +155,7 @@ func (c *Core) interpret(file InterpreterFile, additionalIndent []byte) (err err
 			return
 		}
 
+		lineNum++
 		line := scanner.Bytes()
 		currentLineIndent := make([]byte, 0)
 		if c.opts.PreserveIndent {
@@ -140,7 +165,7 @@ func (c *Core) interpret(file InterpreterFile, additionalIndent []byte) (err err
 			line = line[len(lineIndet):]
 		}
 
-		err = c.searchTokensAndExecute(file.Name, line, currentLineIndent, file.Writer, lineNum+1)
+		err = c.searchTokensAndExecute(file.Name, line, currentLineIndent, file.Writer, lineNum)
 		if err != nil {
 			return
 		}

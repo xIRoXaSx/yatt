@@ -21,15 +21,17 @@ type PreprocessorDirective struct {
 	fileName string
 	args     [][]byte
 	indent   []byte
+	lineNum  int
 	buf      *bytes.Buffer
 }
 
-func newPreprocessorDirective(name, fileName string, args [][]byte, indent []byte) *PreprocessorDirective {
+func newPreprocessorDirective(name, fileName string, lineNum int, args [][]byte, indent []byte) *PreprocessorDirective {
 	return &PreprocessorDirective{
 		name:     name,
 		fileName: fileName,
 		args:     args,
 		indent:   indent,
+		lineNum:  lineNum,
 		buf:      &bytes.Buffer{},
 	}
 }
@@ -39,12 +41,12 @@ func (p *PreprocessorDirective) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 // Implements the Preprocessor interface.
-func (c *Core) Preprocess(pd *PreprocessorDirective, lineDisplayNum int, importPathFunc func(pd *PreprocessorDirective) error) (err error) {
-	return c.preprocess(importPathFunc, pd, lineDisplayNum)
+func (c *Core) Preprocess(pd *PreprocessorDirective, importPathFunc func(pd *PreprocessorDirective) error) (err error) {
+	return c.preprocess(importPathFunc, pd)
 }
 
-func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, pd *PreprocessorDirective, lineDisplayNum int) (err error) {
-	callID := fmt.Sprintf("%s: %s: %d", pd.fileName, pd.name, lineDisplayNum)
+func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, pd *PreprocessorDirective) (err error) {
+	callID := fmt.Sprintf("%s: %s: %d", pd.fileName, pd.name, pd.lineNum)
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%s: %v", callID, err)
@@ -80,12 +82,16 @@ type recurringToken uint8
 
 const (
 	RecurringTokenIgnore recurringToken = iota + 1
+	RecurringTokenForeach
 )
 
 func (c *Core) preprocessorState(fileName string) (t recurringToken) {
 	// Line does not contain one of the required prefixes.
 	if c.ignoreIndex[fileName].isActive() {
 		return RecurringTokenIgnore
+	}
+	if c.feb.IsActive() {
+		return RecurringTokenForeach
 	}
 
 	return
