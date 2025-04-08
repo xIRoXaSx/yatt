@@ -72,89 +72,109 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 }
 
 func (c *Core) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
-	templateStart := templateStartBytes
-	templateEnd := templateEndBytes
 	ret = line
-	tokens := bytes.Split(line, templateStart)
-	if len(tokens) == 1 {
+	partials := bytes.Split(line, templateStartBytes)
+	if len(partials) == 1 {
 		// Nothing needs to be resolved.
 		return
 	}
-
-	for _, token := range tokens {
-		match := bytes.Split(token, templateEnd)
-		if len(match) == 1 {
+	for _, partial := range partials {
+		tokens := bytes.Split(partial, templateEndBytes)
+		if len(tokens) == 1 {
 			continue
 		}
 
 		// Resolve functions and variables.
 		// If no matched variable is found, try to find an global var.
-		for _, m := range match {
-			if len(m) == 0 {
+		for _, token := range tokens {
+			if len(token) == 0 {
 				continue
 			}
 
-			fncName, args := unwrapFunc(m)
-			if len(fncName) == 0 {
+			fnc, args := unwrapFunc(token)
+			if len(fnc) == 0 {
 				// No function found, try to lookup and replace variable.
-				v := c.varLookup(fileName, string(m))
-				if v.Value() == "" {
-					continue
-				}
-
-				ret = replaceVar(ret, m, []byte(v.Value()))
+				ret = c.resolveVariable(fileName, ret, token, additionalVars)
 				continue
 			}
 
-			// Check function's args for variables.
-			// TODO: IMPROVE.
-			varsFromArgs := make([]common.Variable, 0)
-			for j := range args {
-				v := c.varLookup(fileName, string(args[j]))
-				if v.Name() == "" {
-					// For some functions, numbers are also used. Add them.
-					val := string(args[j])
-					v = variable{name: val, value: val}
-				}
-				varsFromArgs = append(varsFromArgs, v)
-			}
-			if len(varsFromArgs) == 0 {
-				continue
-			}
-
-			var remappedArgs [][]byte
-			fncNameStr := fncName.string()
-			remappedArgs, err = remapArgsWithVariables(fncNameStr, varsFromArgs, additionalVars)
+			// Try to resolve function.
+			ret, err = c.resolveFunction(fileName, ret, token, additionalVars, fnc, args)
 			if err != nil {
 				return
 			}
-
-			var mod []byte
-			mod, err = c.executeFunction(fncName, fileName, remappedArgs, additionalVars)
-			if err != nil {
-				return
-			}
-			ret = replaceVar(ret, m, mod)
 		}
 	}
 
-	if len(bytes.Split(ret, templateStart)) > 1 && !bytes.Equal(ret, line) {
+	if len(bytes.Split(ret, templateStartBytes)) > 1 && !bytes.Equal(ret, line) {
 		ret, err = c.resolve(fileName, ret, additionalVars)
 		if err != nil {
 			return
 		}
 	}
 
-	for _, v := range additionalVars {
-		ret = replaceVar(line, []byte(v.Name()), []byte(v.Value()))
+	return
+}
+
+func (c *Core) resolveVariable(fileName string, line, token []byte, additionalVars []common.Variable) (ret []byte) {
+	// No function found, try to lookup and replace variable.
+	ret = line
+	tokenString := string(token)
+	v := c.varLookup(fileName, tokenString)
+	if v.Value() != "" {
+		return replaceVar(ret, token, []byte(v.Value()))
 	}
+
+	for _, av := range additionalVars {
+		if av.Name() == tokenString {
+			v = av
+			break
+		}
+	}
+	if v.Name() == tokenString {
+		ret = replaceVar(ret, token, []byte(v.Value()))
+	}
+	return
+}
+
+func (c *Core) resolveFunction(fileName string, line, token []byte, additionalVars []common.Variable, fnc parserFunc, args [][]byte) (ret []byte, err error) {
+	ret = line
+	fncName := fnc.string()
+
+	// Check function's args for variables.
+	varsFromArgs := make([]common.Variable, 0)
+	for j := range args {
+		v := c.varLookup(fileName, string(args[j]))
+		if v.Name() == "" {
+			// For some functions, numbers are also used. Add them.
+			val := string(args[j])
+			v = variable{name: val, value: val}
+		}
+		varsFromArgs = append(varsFromArgs, v)
+	}
+	if len(varsFromArgs) == 0 {
+		return
+	}
+
+	var remappedArgs [][]byte
+	remappedArgs, err = remapArgsWithVariables(fncName, varsFromArgs, additionalVars)
+	if err != nil {
+		return
+	}
+
+	var mod []byte
+	mod, err = c.executeFunction(fnc, fileName, remappedArgs, additionalVars)
+	if err != nil {
+		return
+	}
+	ret = replaceVar(ret, token, mod)
 	return
 }
 
 // unwrapFunc gets the function's name and its args from the given byte slice.
 func unwrapFunc(b []byte) (fncName parserFunc, args [][]byte) {
 	args = make([][]byte, 0)
-	fnc := bytes.SplitN(bytes.TrimSpace(b), []byte("("), 2)
+	fnc := bytes.Split(bytes.TrimSpace(b), []byte("("))
 	if len(fnc) == 1 {
 		return
 	}

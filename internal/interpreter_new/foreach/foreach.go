@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/xiroxasx/fastplate/internal/common"
@@ -34,7 +33,6 @@ type Buffer struct {
 type state struct {
 	fileName string
 	args     []Arg
-	indent   []byte
 	jumps    []jump
 	closed   bool
 	buf      *bytes.Buffer
@@ -56,7 +54,7 @@ func NewForeachBuffer(lineEnding []byte) Buffer {
 	}
 }
 
-func (f *Buffer) AppendState(fileName string, args []Arg, indent []byte) {
+func (f *Buffer) AppendState(fileName string, args []Arg) {
 	f.stateMx.Lock()
 	defer f.stateMx.Unlock()
 
@@ -75,7 +73,6 @@ func (f *Buffer) AppendState(fileName string, args []Arg, indent []byte) {
 	f.states = append(f.states, state{
 		fileName: fileName,
 		args:     args,
-		indent:   indent,
 		jumps:    make([]jump, 0),
 		buf:      &bytes.Buffer{},
 	})
@@ -116,7 +113,14 @@ func (f *Buffer) WriteLineToBuffer(v []byte) (err error) {
 	return
 }
 
-func (f *Buffer) Evaluate(lineNum int, vg VariableGetter, unwrapperFunc UnwrapperFunc, resolverFunc ResolverFunc, vlr VarLookupRecursiveFunc, dst io.Writer) (err error) {
+func (f *Buffer) Evaluate(
+	lineNum int,
+	dst io.Writer,
+	vg VariableGetter,
+	unwrapperFunc UnwrapperFunc,
+	vlr VarLookupRecursiveFunc,
+	resolverFunc ResolverFunc,
+) (err error) {
 	if len(f.states) == 0 {
 		return errors.New("no states")
 	}
@@ -127,7 +131,15 @@ func (f *Buffer) Evaluate(lineNum int, vg VariableGetter, unwrapperFunc Unwrappe
 	return f.eval(0, lineNum, vg, unwrapperFunc, resolverFunc, vlr, dst)
 }
 
-func (f *Buffer) eval(stateIdx, lineNum int, vg VariableGetter, uw UnwrapperFunc, rf ResolverFunc, vlr VarLookupRecursiveFunc, dst io.Writer) (err error) {
+func (f *Buffer) eval(
+	stateIdx int,
+	lineNum int,
+	vg VariableGetter,
+	uw UnwrapperFunc,
+	rf ResolverFunc,
+	vlr VarLookupRecursiveFunc,
+	dst io.Writer,
+) (err error) {
 	vars, rangeNum := f.evaluationVars(f.states[stateIdx].fileName, vg, uw, vlr, stateIdx)
 	if rangeNum > -1 {
 		for i := 0; i < rangeNum; i++ {
@@ -153,7 +165,16 @@ func (f *Buffer) eval(stateIdx, lineNum int, vg VariableGetter, uw UnwrapperFunc
 	return
 }
 
-func (b *Buffer) evalLines(stateIdx, lineNum int, vg VariableGetter, uf UnwrapperFunc, rf ResolverFunc, vlr VarLookupRecursiveFunc, dst io.Writer, vars ...common.Variable) (err error) {
+func (b *Buffer) evalLines(
+	stateIdx int,
+	lineNum int,
+	vg VariableGetter,
+	uf UnwrapperFunc,
+	rf ResolverFunc,
+	vlr VarLookupRecursiveFunc,
+	dst io.Writer,
+	vars ...common.Variable,
+) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("foreach evaluation: %v (line %d)", err, lineNum)
@@ -168,12 +189,10 @@ func (b *Buffer) evalLines(stateIdx, lineNum int, vg VariableGetter, uf Unwrappe
 line:
 	for ln := lineNum; ln < b.linesBuffered; ln++ {
 		// Check for nested foreach loops.
-		fmt.Println("LINE:", ln)
 		for _, j := range jumps {
 			if j.lineNum != ln {
 				continue
 			}
-			fmt.Printf("JMP from: %d->%d\n", ln, j.lineNum)
 
 			err = b.eval(j.stateIdx, j.lineNum, vg, uf, rf, vlr, dst)
 			if err != nil {
@@ -187,14 +206,12 @@ line:
 		}
 
 		line := buf[bufLn]
-		fmt.Printf("Buffered(%d): %v\n", ln, strings.TrimSpace(string(line)))
-
 		var resolved []byte
 		resolved, err = rf(state.fileName, line, append(vars, common.NewVar("line", strconv.Itoa(ln)))...)
 		if err != nil {
 			return
 		}
-		_, err = dst.Write(append(state.indent, append(resolved, b.lineEnding...)...))
+		_, err = dst.Write(append(resolved, b.lineEnding...))
 		if err != nil {
 			return
 		}
@@ -204,7 +221,13 @@ line:
 	return
 }
 
-func (b *Buffer) evaluationVars(fileName string, vg VariableGetter, uf UnwrapperFunc, vlr VarLookupRecursiveFunc, stateIdx int) (vs []common.Variable, rangeNum int) {
+func (b *Buffer) evaluationVars(
+	fileName string,
+	vg VariableGetter,
+	uf UnwrapperFunc,
+	vlr VarLookupRecursiveFunc,
+	stateIdx int,
+) (vs []common.Variable, rangeNum int) {
 	stack := b.states[stateIdx]
 	variables := make([]common.Variable, 0)
 	argsLen := len(stack.args)

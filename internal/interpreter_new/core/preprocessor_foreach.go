@@ -17,7 +17,7 @@ func (c *Core) foreachStart(pd *PreprocessorDirective) (err error) {
 	for i, arg := range pd.args {
 		febArgs[i] = foreach.Arg(arg)
 	}
-	c.feb.AppendState(pd.fileName, febArgs, pd.indent)
+	c.feb.AppendState(pd.fileName, febArgs)
 	return
 }
 
@@ -29,9 +29,16 @@ func (c *Core) foreachEnd(pd *PreprocessorDirective) (err error) {
 	}
 
 	const startLine = 0
-	err = c.feb.Evaluate(startLine, c, unwrapVar, func(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error) {
-		return c.resolve(fileName, l, vars)
-	}, c.varLookupRecursive, pd.buf)
+	err = c.feb.Evaluate(
+		startLine,
+		pd.buf,
+		c,
+		unwrapVar,
+		c.varLookupRecursive,
+		func(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error) {
+			return c.resolve(fileName, l, vars)
+		},
+	)
 	if err != nil {
 		return
 	}
