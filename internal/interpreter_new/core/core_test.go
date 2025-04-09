@@ -510,7 +510,10 @@ func TestInterpreterResolveNested(t *testing.T) {
 
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	c := New(l, nil, Options{})
-	ret, err := c.resolve("test.txt", []byte("test 123 {{add(1,2,{{mult(2,3)}})}}"), nil)
+	ret, err := c.resolve(resolveArgs{
+		fileName: "test.txt",
+		line:     []byte("test 123 {{add(1,2,{{mult(2,3)}})}}"),
+	})
 	r.NoError(t, err)
 	r.Exactly(t, string(ret), "test 123 9")
 }
