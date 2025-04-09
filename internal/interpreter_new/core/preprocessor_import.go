@@ -21,7 +21,7 @@ func (c *Core) importPath(pd *PreprocessorDirective) (err error) {
 	}
 
 	interFile := InterpreterFile{
-		Name:   filepath.Clean(pd.fileName),
+		Name:   path,
 		RC:     importFile,
 		Writer: pd.buf,
 	}

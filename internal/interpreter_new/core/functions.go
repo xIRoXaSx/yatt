@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/xiroxasx/fastplate/internal/common"
@@ -71,7 +72,7 @@ func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]by
 		return functions.FileName(fileName)
 	case functionNameInternalVar:
 		return functions.Var(fileName, args, additionalVars, func(name, value []byte) error {
-			c.setLocalVar(fileName, common.NewVar(string(name), string(value)))
+			c.setLocalVar(filepath.Clean(fileName), common.NewVar(string(name), string(value)))
 			return nil
 		})
 

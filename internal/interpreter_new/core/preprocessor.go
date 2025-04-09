@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 )
 
 const (
@@ -71,7 +72,7 @@ func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, 
 		return importPathFunc(pd)
 
 	case directiveNameVariable:
-		return c.setLocalVarByArg(pd.fileName, bytes.Join(pd.args, []byte{' '}))
+		return c.setLocalVarByArg(filepath.Clean(pd.fileName), bytes.Join(pd.args, []byte{' '}))
 
 	default:
 		return errors.New("unknown preprocessor directive")
