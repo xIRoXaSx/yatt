@@ -1,5 +1,3 @@
-# Functions can be called by surrounding them with braces.
-# Variables given to the function call do not need to be surrounded by braces.
 Examples: |
   # fastplate var var1 = 1
   # fastplate var var2 = 2

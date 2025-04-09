@@ -1,64 +1,79 @@
-# Starting from here, we want to import multiple files located in this directory.
-# Statements may have a space between the '#' or not ("#fastplate" / "# fastplate").
-ImportExample:
-  # fastplate import ./testdata/interpret/in/partials/description.yaml
+# This is an example file which gives you a hint on how features might be used.
+Template:
+  Preprocessors:
+    # Imports are a great way to split files into multiple or reuse parts of it.
+    Imports:
+      # Import file contents:
+      # fastplate import ./testdata/interpret/in/partials/description.yaml
 
-  # If enabled, indentation in front of an import statement will be applied to the whole imported section.
-  # The content of the imported file will automatically have the prepended spaces / tabs.
-  # This works with any amount of spaces / tabs.
-  Indention:
-    # fastplate import ./testdata/interpret/in/partials/indention.yaml
+      # If enabled, indentation in front of an import statement will be applied to the whole imported section.
+      # The content of the imported file will automatically have the prepended spaces / tabs.
+      # This works with any amount of spaces / tabs.
+      Indention:
+        # fastplate import ./testdata/interpret/in/partials/indention.yaml
 
-  # Nesting imports
-  # ~-~-~-~-~-~-~-~
-  # Nested imports allow for more flexibility.
-  # In this example, the correct YAML indention comes directly from inside the imported file(s).
-  NestedImports: |
-  # fastplate import ./testdata/interpret/in/partials/nested.yaml
+      # Nested imports allow for more flexibility.
+      # In this example, the correct YAML indention comes directly from inside the imported file(s).
+      NestedImports:
+      # fastplate import ./testdata/interpret/in/partials/nested.yaml
 
-  # Ignoring parts of a file
-  # ~-~-~-~-~-~-~-~-~-~-~-~-
-  # You can ignore lines via the ignore start / end syntax!
-  # This is pretty handy if you don't want certain sections in the output file.
-  # fastplate ignore
-  #   These two lines will not show up in the output file.
-  #   This also allows for template specific documentation.
-  # fastplate ignoreend
+    # Ignore statements can help you to keep your output files free from unnecessary lines.
+    # Whether that might be an internal comment, a whole section of a file or whatever your case might be.
+    Ignores: Are pretty handy!
+    # fastplate ignore
+    #   These two lines will not show up in the output file.
+    #   This also allows for template specific documentation.
+    # fastplate ignoreend
 
-  # Using variables
-  # ~-~-~-~-~-~-~-~
-  # By declaring scoped / local variables in the syntax down below, you can reuse values in the same template (file).
-  # You can declare a fastplate.var file or use the optional "-var <file_path>" argument to define unscoped / global variables.
-  # This allows you to use variables regardless of the template.
-  # The following options are valid for both scopes: x = y, x= y, x =y, x=y.
-  # Declaring a variable:
-  #   # fastplate var test = 1
-  # Using the syntax:
-  #   This is a text which includes {{test}} variable.
-  # Example:
-  #   A value like the threshold down below may be used in multiple places
-  #   and can therefore be declared as a var.
+    # By declaring variables and using the corresponding foreach syntax, you can create a for(-each) loop.
+    # Using a single integer value, foreach is treated as a for loop (0-n).
+    # Using multiple value, foreach is treated as a for each loop.
+    # You might also want to retrieve the index or value of the loop.
+    # This can be achieved by the special variables {{index}} and {{value}} correspondingly.
+    # When loops are nested, you might want to retrieve the values from the outer layers by creating additional variables.
+    # Opening and closing brackets are optional.
+    Foreach: |
+      # fastplate var var1 = var 1
+      # fastplate var var2 = var 2
+      # fastplate var var3 = var 3
+      # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
+        loop=0, iteration= {{index}}, value={{value}}{{var(l1, {{value}})}}
+        # fastplate foreach [ {{var1}} {{var2}} ]
+          loop=1, iteration={{index}}, value={{value}}{{var(l2, {{value}})}}
+          # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
+            loop=2, iteration={{index}}, value={{value}}{{var(l3, {{value}})}}
+          # fastplate foreachend
+          # fastplate foreach [ {{var1}}, {{var2}} ]
+            loop=3, iteration={{index}}, value={{value}}, l1={{l1}}, l2={{l2}}, l3={{l3}}
+          # fastplate foreachend
+          loop=1
+          loop=1
+          loop=1
+          # fastplate foreach [ {{var1}}, {{var2}} ]
+            loop=4, iteration={{index}}, value={{value}}, l1={{l1}}, l2={{l2}}, l3={{l3}}
+            # fastplate foreach [ {{var1}}, {{var2}} ]
+              loop=5, iteration={{index}}, value={{value}}, l1={{l1}}, l2={{l2}}, l3={{l3}}
+            # fastplate foreachend
+          # fastplate foreachend
+        # fastplate foreachend
+      # fastplate foreachend
+
+  # By declaring global or local variables in the syntax down below, you can reuse values.
+  # You can either declare variables in your template file directly or use another file to feed it via the CLI flag.
+  # Using the latter declares global variables that can be used form any files that gets interpreted.
   Variables:
-    # fastplate var scoped_threshold = 0.75
-    Threshold: {{scoped_threshold}}
-    Message: The threshold of {{scoped_threshold}} has been reached.
+    # Declaring a variable via preprocessor:
+    #   # fastplate var test = 1
+    # Declaring an inline variable via function: {{ var(test, 1) }}
+    # Using the syntax:
+    #   This is a text which includes our handy test variable which holds the value of '{{test}}'.
+    #
+    # The root file now has a variable declared called "test".
+    # This specific variable is out of scope in the imported file.
+    # However you might want to use a global variable like "global_threshold" instead!
     # fastplate import ./testdata/interpret/in/partials/varscopes.yaml
 
+  # Functions can be called by surrounding them with braces, just like variables.
+  # Variables provided to the function calls do not need to be surrounded by braces.
   Functions:
     # fastplate import ./testdata/interpret/in/partials/functions.yaml
-
-  # Using foreach loops
-  # ~-~-~-~-~-~-~-~-~-~
-  # By declaring variables and using the corresponding foreach syntax, you can create a for-each loop.
-  # Opening and closing brackets are optional.
-  loops: |
-  # fastplate var var1 = var 1
-  # fastplate var var2 = var 2
-  # fastplate var var3 = var 3
-  # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
-    This is the outer loop!{{var(outer, index)}}
-    # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
-      Hello from index {{index}} with value "{{value}}" and outer index of {{outer}}.
-    # fastplate foreachend
-  # fastplate foreachend
-# End of file.

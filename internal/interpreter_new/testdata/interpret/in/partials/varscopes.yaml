@@ -1,5 +1,2 @@
-# The root files contains a variable called "scoped_threshold".
-# This specific variable is out of scope here. You can either add another scoped variable here or
-# use an unscoped instead.
-Scoped: {{scoped_threshold}}
-Unscoped: {{unscoped_threshold}}
+Local: {{test}}
+Unscoped: {{global_threshold}}
