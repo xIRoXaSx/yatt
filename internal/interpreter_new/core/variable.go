@@ -60,13 +60,11 @@ func setRegistryVar(reg *variableRegistry, register string, newVar common.Variab
 	reg.Lock()
 	defer reg.Unlock()
 
-	for register, vars := range reg.entries {
-		for i, v := range vars {
-			if newVar.Name() == v.Name() {
-				// Update existing variable.
-				reg.entries[register][i] = common.NewVar(v.Name(), newVar.Value())
-				return
-			}
+	for i, v := range reg.entries[register] {
+		if newVar.Name() == v.Name() {
+			// Update existing variable.
+			reg.entries[register][i] = newVar
+			return
 		}
 	}
 
