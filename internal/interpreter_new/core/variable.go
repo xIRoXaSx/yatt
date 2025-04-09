@@ -37,12 +37,12 @@ func (c *Core) InitLocalVariablesByFiles(varFileNames ...string) {
 		lines := bytes.Split(cont, lineEnding)
 		for _, l := range lines {
 			split := bytes.Split(c.cutPrefix(l), []byte{' '})
-			if string(split[0]) != directiveNameVariable {
+			if len(split) < 3 || string(split[0]) != directiveNameVariable {
 				continue
 			}
 
 			// Skip the var declaration keyword.
-			v := common.VarFromArg(bytes.TrimPrefix(l, split[0]))
+			v := common.VarFromArg(bytes.Join(split[1:], []byte(" ")))
 			c.setGlobalVar(v)
 		}
 	}
@@ -89,10 +89,6 @@ func (c *Core) varLookupGlobal(name string) (v common.Variable) {
 
 func (c *Core) varLookupLocal(register, name string) (v common.Variable) {
 	return varLookupRegistry(&c.varRegistryLocal, register, name)
-}
-
-func (c *Core) varsLookupGlobal() (v []common.Variable) {
-	return c.varRegistryGlobal.entries[variableRegistryGlobalRegister]
 }
 
 func (c *Core) varsLookupGlobalFile(register string) (v []common.Variable) {
