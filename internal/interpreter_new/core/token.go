@@ -8,6 +8,12 @@ import (
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
+type resolveArgs struct {
+	fileName       string
+	line           []byte
+	additionalVars []common.Variable
+}
+
 func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
 	prefix := c.matchedPrefixToken(line)
 	if len(prefix) > 0 {
@@ -58,7 +64,10 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 
 	// No prefix found, try to resolve variables and functions if there are any.
 	var ret []byte
-	ret, err = c.resolve(fileName, line, nil)
+	ret, err = c.resolve(resolveArgs{
+		fileName: fileName,
+		line:     line,
+	})
 	if err != nil {
 		return
 	}
@@ -71,9 +80,9 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 	return
 }
 
-func (c *Core) resolve(fileName string, line []byte, additionalVars []common.Variable) (ret []byte, err error) {
-	ret = line
-	partials := bytes.Split(line, templateStartBytes)
+func (c *Core) resolve(rArgs resolveArgs) (ret []byte, err error) {
+	ret = rArgs.line
+	partials := bytes.Split(rArgs.line, templateStartBytes)
 	if len(partials) == 1 {
 		// Nothing needs to be resolved.
 		return
@@ -94,20 +103,24 @@ func (c *Core) resolve(fileName string, line []byte, additionalVars []common.Var
 			fnc, args := unwrapFunc(token)
 			if len(fnc) == 0 {
 				// No function found, try to lookup and replace variable.
-				ret = c.resolveVariable(fileName, ret, token, additionalVars)
+				ret = c.resolveVariable(rArgs.fileName, ret, token, rArgs.additionalVars)
 				continue
 			}
 
 			// Try to resolve function.
-			ret, err = c.resolveFunction(fileName, ret, token, additionalVars, fnc, args)
+			ret, err = c.resolveFunction(rArgs.fileName, ret, token, rArgs.additionalVars, fnc, args)
 			if err != nil {
 				return
 			}
 		}
 	}
 
-	if len(bytes.Split(ret, templateStartBytes)) > 1 && !bytes.Equal(ret, line) {
-		ret, err = c.resolve(fileName, ret, additionalVars)
+	if len(bytes.Split(ret, templateStartBytes)) > 1 && !bytes.Equal(ret, rArgs.line) {
+		ret, err = c.resolve(resolveArgs{
+			fileName:       rArgs.fileName,
+			line:           ret,
+			additionalVars: rArgs.additionalVars,
+		})
 		if err != nil {
 			return
 		}

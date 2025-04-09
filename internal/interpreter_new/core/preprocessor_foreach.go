@@ -36,7 +36,11 @@ func (c *Core) foreachEnd(pd *PreprocessorDirective) (err error) {
 		unwrapVar,
 		c.varLookupRecursive,
 		func(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error) {
-			return c.resolve(fileName, l, vars)
+			return c.resolve(resolveArgs{
+				fileName:       fileName,
+				line:           l,
+				additionalVars: vars,
+			})
 		},
 	)
 	if err != nil {
