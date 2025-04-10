@@ -28,11 +28,6 @@ func (v variable) Value() string {
 //
 
 // Implement foreach.TokenResolver interface.
-func (c *Core) VarUnwrapper(token []byte) (t []byte) {
-	return unwrapVar(token)
-}
-
-// Implement foreach.TokenResolver interface.
 func (c *Core) VarLookupRecursive(fileName, name string, untilForeachIdx int) (_ []common.Variable) {
 	return c.varLookupRecursive(fileName, name, untilForeachIdx)
 }

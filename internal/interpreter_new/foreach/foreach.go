@@ -12,11 +12,9 @@ import (
 )
 
 // TokenResolver is an interface which is responsible for:
-//   - unwrapping and looking up variables
-//   - resolving and replacing variable and function tokens with their corresponding value.
+// looking up, resolving and replacing variable and function tokens with their corresponding value.
 type TokenResolver interface {
 	Resolve(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error)
-	VarUnwrapper(token []byte) []byte
 	VarLookupRecursive(fileName, name string, untilForeachIdx int) (_ []common.Variable)
 }
 
@@ -220,7 +218,7 @@ func (b *Buffer) evaluationVars(
 	argsLen := len(stack.args)
 	rangeNum = -1
 	for _, arg := range stack.args {
-		argStr := string(tr.VarUnwrapper(arg))
+		argStr := string(arg)
 
 		if argsLen == 1 {
 			// Looks like the user wants to range over the amount specified in the arg.

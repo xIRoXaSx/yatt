@@ -13,7 +13,7 @@ func (c *Core) foreachStart(pd *PreprocessorDirective) (err error) {
 
 	febArgs := make([]foreach.Arg, len(pd.args))
 	for i, arg := range pd.args {
-		febArgs[i] = foreach.Arg(arg)
+		febArgs[i] = foreach.Arg(unwrapVar(arg))
 	}
 	c.feb.AppendState(pd.fileName, febArgs)
 	return
