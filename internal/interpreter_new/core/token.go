@@ -71,7 +71,11 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 	if err != nil {
 		return
 	}
-	ret = append(currentLineIndent, ret...)
+
+	// Only prepend indents if line is not empty.
+	if len(bytes.TrimSpace(ret)) != 0 {
+		ret = append(currentLineIndent, ret...)
+	}
 	_, err = buf.Write(append(ret, lineEnding...))
 	if err != nil {
 		return
