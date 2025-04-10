@@ -30,6 +30,9 @@ var (
 	errDependencyUnknownSyntax = fmt.Errorf("unknown syntax: %s <file path>", preprocessorImportName)
 )
 
+// Core must implement the foreach.TokenResolver interface.
+var _ foreach.TokenResolver = &Core{}
+
 type Core struct {
 	l        zerolog.Logger
 	prefixes [][]byte
@@ -125,6 +128,15 @@ func (c *Core) VarsLookupGlobal() []common.Variable {
 
 func (c *Core) Interpret(file InterpreterFile) (err error) {
 	return c.interpret(file, nil)
+}
+
+// Implement foreach.TokenResolver interface.
+func (c *Core) Resolve(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error) {
+	return c.resolve(resolveArgs{
+		fileName:       fileName,
+		line:           l,
+		additionalVars: vars,
+	})
 }
 
 // interpret tries to interpret the scanned content of file.rc.

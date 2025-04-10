@@ -11,16 +11,14 @@ import (
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
-type VariableGetter interface {
-	VarLookupForeach(register, name string, stateIndx int) common.Variable
-	VarLookupLocal(register, name string) common.Variable
-	VarsLookupGlobalFile(name string) []common.Variable
-	VarsLookupGlobal() []common.Variable
+// TokenResolver is an interface which is responsible for:
+//   - unwrapping and looking up variables
+//   - resolving and replacing variable and function tokens with their corresponding value.
+type TokenResolver interface {
+	Resolve(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error)
+	VarUnwrapper(token []byte) []byte
+	VarLookupRecursive(fileName, name string, untilForeachIdx int) (_ []common.Variable)
 }
-
-type ResolverFunc func(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error)
-type VarLookupRecursiveFunc func(fileName, name string, vg VariableGetter, untilForeachIdx int) (_ []common.Variable)
-type UnwrapperFunc func([]byte) []byte
 
 type Buffer struct {
 	stateEvalIdx  int
@@ -116,10 +114,7 @@ func (f *Buffer) WriteLineToBuffer(v []byte) (err error) {
 func (f *Buffer) Evaluate(
 	lineNum int,
 	dst io.Writer,
-	vg VariableGetter,
-	unwrapperFunc UnwrapperFunc,
-	vlr VarLookupRecursiveFunc,
-	resolverFunc ResolverFunc,
+	tr TokenResolver,
 ) (err error) {
 	if len(f.states) == 0 {
 		return errors.New("no states")
@@ -128,22 +123,19 @@ func (f *Buffer) Evaluate(
 		return errors.New("unclosed states")
 	}
 
-	return f.eval(0, lineNum, vg, unwrapperFunc, resolverFunc, vlr, dst)
+	return f.eval(0, lineNum, tr, dst)
 }
 
 func (f *Buffer) eval(
 	stateIdx int,
 	lineNum int,
-	vg VariableGetter,
-	uw UnwrapperFunc,
-	rf ResolverFunc,
-	vlr VarLookupRecursiveFunc,
+	tr TokenResolver,
 	dst io.Writer,
 ) (err error) {
-	vars, rangeNum := f.evaluationVars(f.states[stateIdx].fileName, vg, uw, vlr, stateIdx)
+	vars, rangeNum := f.evaluationVars(f.states[stateIdx].fileName, tr, stateIdx)
 	if rangeNum > -1 {
 		for i := 0; i < rangeNum; i++ {
-			err = f.evalLines(stateIdx, lineNum, vg, uw, rf, vlr, dst, []common.Variable{
+			err = f.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
 				common.NewVar("index", strconv.Itoa(i)),
 			}...)
 			if err != nil {
@@ -154,7 +146,7 @@ func (f *Buffer) eval(
 	}
 
 	for i, v := range vars {
-		err = f.evalLines(stateIdx, lineNum, vg, uw, rf, vlr, dst, []common.Variable{
+		err = f.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
 			common.NewVar("index", strconv.Itoa(i)),
 			common.NewVar("value", v.Value()),
 		}...)
@@ -168,10 +160,7 @@ func (f *Buffer) eval(
 func (b *Buffer) evalLines(
 	stateIdx int,
 	lineNum int,
-	vg VariableGetter,
-	uf UnwrapperFunc,
-	rf ResolverFunc,
-	vlr VarLookupRecursiveFunc,
+	tr TokenResolver,
 	dst io.Writer,
 	vars ...common.Variable,
 ) (err error) {
@@ -194,7 +183,7 @@ line:
 				continue
 			}
 
-			err = b.eval(j.stateIdx, j.lineNum, vg, uf, rf, vlr, dst)
+			err = b.eval(j.stateIdx, j.lineNum, tr, dst)
 			if err != nil {
 				return
 			}
@@ -207,7 +196,7 @@ line:
 
 		line := buf[bufLn]
 		var resolved []byte
-		resolved, err = rf(state.fileName, line, append(vars, common.NewVar("line", strconv.Itoa(ln)))...)
+		resolved, err = tr.Resolve(state.fileName, line, append(vars, common.NewVar("line", strconv.Itoa(ln)))...)
 		if err != nil {
 			return
 		}
@@ -223,9 +212,7 @@ line:
 
 func (b *Buffer) evaluationVars(
 	fileName string,
-	vg VariableGetter,
-	uf UnwrapperFunc,
-	vlr VarLookupRecursiveFunc,
+	tr TokenResolver,
 	stateIdx int,
 ) (vs []common.Variable, rangeNum int) {
 	stack := b.states[stateIdx]
@@ -233,7 +220,7 @@ func (b *Buffer) evaluationVars(
 	argsLen := len(stack.args)
 	rangeNum = -1
 	for _, arg := range stack.args {
-		argStr := string(uf(arg))
+		argStr := string(tr.VarUnwrapper(arg))
 
 		if argsLen == 1 {
 			// Looks like the user wants to range over the amount specified in the arg.
@@ -245,7 +232,7 @@ func (b *Buffer) evaluationVars(
 			return
 		}
 
-		vars := vlr(fileName, argStr, vg, stateIdx)
+		vars := tr.VarLookupRecursive(fileName, argStr, stateIdx)
 		if len(vars) == 1 && argsLen == 1 {
 			// Looks like the user wants to range over the amount specified in a variable.
 			rangeNum = 0
