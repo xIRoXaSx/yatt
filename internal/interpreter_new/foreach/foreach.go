@@ -1,7 +1,6 @@
 package foreach
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -31,7 +30,7 @@ type state struct {
 	args     []Arg
 	jumps    []jump
 	closed   bool
-	buf      *bytes.Buffer
+	lines    [][]byte
 }
 
 type Arg []byte
@@ -62,7 +61,10 @@ func (f *Buffer) AppendState(fileName string, args []Arg) {
 	if stateLen > 0 {
 		idx = stateLen
 		state := &f.states[f.stateEvalIdx]
-		state.jumps = append(state.jumps, jump{lineNum: f.linesBuffered, stateIdx: stateLen})
+		state.jumps = append(state.jumps, jump{
+			lineNum:  f.linesBuffered,
+			stateIdx: stateLen,
+		})
 	}
 
 	f.stateEvalIdx = idx
@@ -70,7 +72,7 @@ func (f *Buffer) AppendState(fileName string, args []Arg) {
 		fileName: fileName,
 		args:     args,
 		jumps:    make([]jump, 0),
-		buf:      &bytes.Buffer{},
+		lines:    make([][]byte, 0),
 	})
 }
 
@@ -85,7 +87,7 @@ func (f *Buffer) MoveToPreviousState() {
 	// Close the current state and find the next evaluation index to move the curor to.
 	f.states[f.stateEvalIdx].closed = true
 
-	// Find next last opened state to attach to the corresponding buffer.
+	// Find next last opened state to attach to the corresponding buffer on next write.
 	var idx int
 	for i := len(f.states) - 1; i > 0; i-- {
 		if !f.states[i].closed {
@@ -100,7 +102,7 @@ func (f *Buffer) WriteLineToBuffer(v []byte) (err error) {
 	// If the last state is closed, we need to write to the latest state.
 	idx := f.stateEvalIdx
 	v = append(v, f.lineEnding...)
-	_, err = f.states[idx].buf.Write(v)
+	f.states[idx].lines = append(f.states[idx].lines, v)
 	if err != nil {
 		return
 	}
@@ -109,11 +111,7 @@ func (f *Buffer) WriteLineToBuffer(v []byte) (err error) {
 	return
 }
 
-func (f *Buffer) Evaluate(
-	lineNum int,
-	dst io.Writer,
-	tr TokenResolver,
-) (err error) {
+func (f *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err error) {
 	if len(f.states) == 0 {
 		return errors.New("no states")
 	}
@@ -124,12 +122,7 @@ func (f *Buffer) Evaluate(
 	return f.eval(0, lineNum, tr, dst)
 }
 
-func (f *Buffer) eval(
-	stateIdx int,
-	lineNum int,
-	tr TokenResolver,
-	dst io.Writer,
-) (err error) {
+func (f *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer) (err error) {
 	vars, rangeNum := f.evaluationVars(f.states[stateIdx].fileName, tr, stateIdx)
 	if rangeNum > -1 {
 		for i := 0; i < rangeNum; i++ {
@@ -155,13 +148,7 @@ func (f *Buffer) eval(
 	return
 }
 
-func (b *Buffer) evalLines(
-	stateIdx int,
-	lineNum int,
-	tr TokenResolver,
-	dst io.Writer,
-	vars ...common.Variable,
-) (err error) {
+func (b *Buffer) evalLines(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer, vars ...common.Variable) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("foreach evaluation: %v (line %d)", err, lineNum)
@@ -170,7 +157,6 @@ func (b *Buffer) evalLines(
 
 	state := b.states[stateIdx]
 	jumps := state.jumps
-	buf := bytes.Split(state.buf.Bytes(), b.lineEnding)
 	var bufLn int
 
 line:
@@ -188,17 +174,17 @@ line:
 			continue line
 		}
 
-		if bufLn >= len(buf) {
+		if bufLn >= len(state.lines) {
 			return
 		}
 
-		line := buf[bufLn]
+		line := state.lines[bufLn]
 		var resolved []byte
 		resolved, err = tr.Resolve(state.fileName, line, append(vars, common.NewVar("line", strconv.Itoa(ln)))...)
 		if err != nil {
 			return
 		}
-		_, err = dst.Write(append(resolved, b.lineEnding...))
+		_, err = dst.Write(resolved)
 		if err != nil {
 			return
 		}
@@ -208,11 +194,7 @@ line:
 	return
 }
 
-func (b *Buffer) evaluationVars(
-	fileName string,
-	tr TokenResolver,
-	stateIdx int,
-) (vs []common.Variable, rangeNum int) {
+func (b *Buffer) evaluationVars(fileName string, tr TokenResolver, stateIdx int) (vs []common.Variable, rangeNum int) {
 	stack := b.states[stateIdx]
 	variables := make([]common.Variable, 0)
 	argsLen := len(stack.args)
