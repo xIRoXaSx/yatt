@@ -54,7 +54,7 @@ type Options struct {
 type ignoreIndexes map[string]ignoreState
 
 type registries struct {
-	varRegistryForeach    []variableRegistry // TODO: Each nested variable can access vars from parents but not their children.
+	varRegistryForeach    variableRegistry
 	varRegistryLocal      variableRegistry
 	varRegistryGlobal     variableRegistry
 	varRegistryGlobalFile variableRegistry
@@ -85,6 +85,13 @@ func New(l zerolog.Logger, prefixes []string, opts Options) *Core {
 		ps[i] = []byte(prefixes[i])
 	}
 
+	newVarReg := func() variableRegistry {
+		return variableRegistry{
+			entries: make(map[string]vars, 0),
+			Mutex:   &sync.Mutex{},
+		}
+	}
+
 	return &Core{
 		l:            l.With().Str("mod", "core").Logger(),
 		opts:         opts,
@@ -94,28 +101,12 @@ func New(l zerolog.Logger, prefixes []string, opts Options) *Core {
 		Mutex:        &sync.Mutex{},
 		depsResolver: newDependencyResolver(),
 		registries: registries{
-			varRegistryLocal: variableRegistry{
-				entries: make(map[string]vars, 0),
-				Mutex:   &sync.Mutex{},
-			},
-			varRegistryGlobal: variableRegistry{
-				entries: make(map[string]vars, 0),
-				Mutex:   &sync.Mutex{},
-			},
-			varRegistryGlobalFile: variableRegistry{
-				entries: make(map[string]vars, 0),
-				Mutex:   &sync.Mutex{},
-			},
+			varRegistryForeach:    newVarReg(),
+			varRegistryLocal:      newVarReg(),
+			varRegistryGlobal:     newVarReg(),
+			varRegistryGlobalFile: newVarReg(),
 		},
 	}
-}
-
-func (c *Core) VarLookupLocal(register, name string) common.Variable {
-	return c.varLookupLocal(register, name)
-}
-
-func (c *Core) VarLookupForeach(register, name string, stateIdx int) common.Variable {
-	return c.varLookupForeach(register, name, stateIdx)
 }
 
 func (c *Core) VarsLookupGlobalFile(name string) []common.Variable {

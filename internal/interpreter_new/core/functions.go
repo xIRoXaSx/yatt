@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/xiroxasx/fastplate/internal/common"
@@ -71,10 +72,19 @@ func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]by
 	case functionNameInternalFileName:
 		return functions.FileName(fileName)
 	case functionNameInternalVar:
-		return functions.Var(fileName, args, additionalVars, func(name, value []byte) error {
+		varSetter := func(name, value []byte) error {
 			c.setLocalVar(filepath.Clean(fileName), common.NewVar(string(name), string(value)))
 			return nil
-		})
+		}
+		if c.feb.StateIndex() > -1 {
+			varSetter = func(name, value []byte) error {
+				reg := strconv.Itoa(c.feb.StateIndex())
+				c.setForeachVar(reg, common.NewVar(string(name), string(value)))
+				return nil
+			}
+		}
+
+		return functions.Var(fileName, args, additionalVars, varSetter)
 
 	// Math.
 	case functionNameMathAdd:

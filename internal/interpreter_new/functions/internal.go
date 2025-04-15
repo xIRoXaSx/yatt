@@ -7,7 +7,7 @@ import (
 	"github.com/xiroxasx/fastplate/internal/common"
 )
 
-func Var(fileName string, args [][]byte, additionalVars []common.Variable, localVarSetter func(name, value []byte) error) (ret []byte, err error) {
+func Var(fileName string, args [][]byte, additionalVars []common.Variable, varSetter func(name, value []byte) error) (ret []byte, err error) {
 	err = assertArgsLengthAtLeast(args, 2)
 	if err != nil {
 		return
@@ -23,7 +23,7 @@ func Var(fileName string, args [][]byte, additionalVars []common.Variable, local
 		}
 	}
 
-	err = localVarSetter(arg0, arg1)
+	err = varSetter(arg0, arg1)
 	return
 }
 

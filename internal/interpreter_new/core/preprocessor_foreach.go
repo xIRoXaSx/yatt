@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/xiroxasx/fastplate/internal/interpreter_new/foreach"
@@ -13,7 +14,15 @@ func (c *Core) foreachStart(pd *PreprocessorDirective) (err error) {
 
 	febArgs := make([]foreach.Arg, len(pd.args))
 	for i, arg := range pd.args {
-		febArgs[i] = foreach.Arg(unwrapVar(arg))
+		// Trim optional chars.
+		feArg := unwrapVar(arg)
+		feArg = bytes.TrimLeft(feArg, "[")
+		feArg = bytes.TrimRight(feArg, "]")
+		if len(feArg) == 0 {
+			continue
+		}
+
+		febArgs[i] = feArg
 	}
 	c.feb.AppendState(pd.fileName, febArgs)
 	return

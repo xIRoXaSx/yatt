@@ -18,7 +18,8 @@ type TokenResolver interface {
 }
 
 type Buffer struct {
-	stateEvalIdx  int
+	preEvalIdx    int
+	evalStateIdx  int
 	states        []state
 	lineEnding    []byte
 	linesBuffered int
@@ -26,11 +27,12 @@ type Buffer struct {
 }
 
 type state struct {
-	fileName string
-	args     []Arg
-	jumps    []jump
-	closed   bool
-	lines    [][]byte
+	fileName         string
+	args             []Arg
+	jumps            []jump
+	closed           bool
+	lines            [][]byte
+	previousStateIdx int
 }
 
 type Arg []byte
@@ -42,33 +44,34 @@ type jump struct {
 
 func NewForeachBuffer(lineEnding []byte) Buffer {
 	return Buffer{
-		stateEvalIdx: -1,
+		preEvalIdx:   -1,
 		states:       make([]state, 0),
 		lineEnding:   lineEnding,
+		evalStateIdx: -1,
 		stateMx:      &sync.Mutex{},
 	}
 }
 
-func (f *Buffer) AppendState(fileName string, args []Arg) {
-	f.stateMx.Lock()
-	defer f.stateMx.Unlock()
+func (b *Buffer) AppendState(fileName string, args []Arg) {
+	b.stateMx.Lock()
+	defer b.stateMx.Unlock()
 
 	// Check if we need to set the state jump of the previous state.
 	var (
 		idx      int
-		stateLen = len(f.states)
+		stateLen = len(b.states)
 	)
 	if stateLen > 0 {
 		idx = stateLen
-		state := &f.states[f.stateEvalIdx]
+		state := &b.states[b.preEvalIdx]
 		state.jumps = append(state.jumps, jump{
-			lineNum:  f.linesBuffered,
+			lineNum:  b.linesBuffered,
 			stateIdx: stateLen,
 		})
 	}
 
-	f.stateEvalIdx = idx
-	f.states = append(f.states, state{
+	b.preEvalIdx = idx
+	b.states = append(b.states, state{
 		fileName: fileName,
 		args:     args,
 		jumps:    make([]jump, 0),
@@ -76,53 +79,74 @@ func (f *Buffer) AppendState(fileName string, args []Arg) {
 	})
 }
 
-func (f *Buffer) IsActive() bool {
-	return len(f.states) > 0 && !f.states[0].closed
+func (b *Buffer) IsActive() bool {
+	return len(b.states) > 0 && !b.states[0].closed
 }
 
-func (f *Buffer) MoveToPreviousState() {
-	f.stateMx.Lock()
-	defer f.stateMx.Unlock()
+func (b *Buffer) StateIndex() int {
+	b.stateMx.Lock()
+	defer b.stateMx.Unlock()
+
+	return b.evalStateIdx
+}
+
+func (b *Buffer) MoveToPreviousState() (idx int) {
+	b.stateMx.Lock()
+	defer b.stateMx.Unlock()
 
 	// Close the current state and find the next evaluation index to move the curor to.
-	f.states[f.stateEvalIdx].closed = true
+	b.states[b.preEvalIdx].closed = true
 
 	// Find next last opened state to attach to the corresponding buffer on next write.
-	var idx int
-	for i := len(f.states) - 1; i > 0; i-- {
-		if !f.states[i].closed {
+	for i := len(b.states) - 1; i > 0; i-- {
+		if !b.states[i].closed {
 			idx = i
 			break
 		}
 	}
-	f.stateEvalIdx = idx
+	b.states[b.preEvalIdx].previousStateIdx = idx
+	b.preEvalIdx = idx
+	return
 }
 
-func (f *Buffer) WriteLineToBuffer(v []byte) {
+func (b *Buffer) WriteLineToBuffer(v []byte) {
 	// If the last state is closed, we need to write to the latest state.
-	idx := f.stateEvalIdx
-	v = append(v, f.lineEnding...)
-	f.states[idx].lines = append(f.states[idx].lines, v)
+	idx := b.preEvalIdx
+	v = append(v, b.lineEnding...)
+	b.states[idx].lines = append(b.states[idx].lines, v)
 
-	f.linesBuffered++
+	b.linesBuffered++
 }
 
-func (f *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err error) {
-	if len(f.states) == 0 {
+func (b *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err error) {
+	if len(b.states) == 0 {
 		return errors.New("no states")
 	}
-	if !f.states[0].closed {
+	if !b.states[0].closed {
 		return errors.New("unclosed states")
 	}
 
-	return f.eval(0, lineNum, tr, dst)
+	defer func() {
+		b.stateMx.Lock()
+		b.evalStateIdx = -1
+		b.stateMx.Unlock()
+	}()
+
+	return b.eval(0, lineNum, tr, dst)
 }
 
-func (f *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer) (err error) {
-	vars, rangeNum := f.evaluationVars(f.states[stateIdx].fileName, tr, stateIdx)
+func (b *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer) (err error) {
+	b.stateMx.Lock()
+	b.evalStateIdx = stateIdx
+	b.stateMx.Unlock()
+	defer func() {
+		b.evalStateIdx = 0
+	}()
+
+	vars, rangeNum := b.evaluationVars(b.states[stateIdx].fileName, tr, stateIdx)
 	if rangeNum > -1 {
 		for i := 0; i < rangeNum; i++ {
-			err = f.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
+			err = b.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
 				common.NewVar("index", strconv.Itoa(i)),
 			}...)
 			if err != nil {
@@ -133,7 +157,7 @@ func (f *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer
 	}
 
 	for i, v := range vars {
-		err = f.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
+		err = b.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
 			common.NewVar("index", strconv.Itoa(i)),
 			common.NewVar("value", v.Value()),
 		}...)
@@ -191,11 +215,11 @@ line:
 }
 
 func (b *Buffer) evaluationVars(fileName string, tr TokenResolver, stateIdx int) (vs []common.Variable, rangeNum int) {
-	stack := b.states[stateIdx]
+	state := b.states[stateIdx]
 	variables := make([]common.Variable, 0)
-	argsLen := len(stack.args)
+	argsLen := len(state.args)
 	rangeNum = -1
-	for _, arg := range stack.args {
+	for _, arg := range state.args {
 		argStr := string(arg)
 
 		if argsLen == 1 {
@@ -226,4 +250,14 @@ func (b *Buffer) evaluationVars(fileName string, tr TokenResolver, stateIdx int)
 	}
 
 	return variables, -1
+}
+
+func (b *Buffer) ReverseLoopOrder(stateIdx int) (idxs []int) {
+	idx := stateIdx
+	for idx > 0 {
+		idx = b.states[idx].previousStateIdx
+		idxs = append(idxs, idx)
+	}
+
+	return
 }

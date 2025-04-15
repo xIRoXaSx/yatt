@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/xiroxasx/fastplate/internal/common"
@@ -58,6 +59,10 @@ func (c *Core) InitLocalVariablesByFiles(varFileNames ...string) {
 	}
 }
 
+func (c *Core) setForeachVar(register string, newVar common.Variable) {
+	setRegistryVar(&c.varRegistryForeach, register, newVar)
+}
+
 func (c *Core) setGlobalVar(newVar common.Variable) {
 	setRegistryVar(&c.varRegistryGlobal, variableRegistryGlobalRegister, newVar)
 }
@@ -86,6 +91,13 @@ func setRegistryVar(reg *variableRegistry, register string, newVar common.Variab
 //
 
 func (c *Core) varLookup(file, name string) (v common.Variable) {
+	if c.feb.StateIndex() > -1 {
+		v = c.varLookupForeach(c.feb.StateIndex(), name)
+		if v != nil {
+			return
+		}
+	}
+
 	v = c.varLookupLocal(file, name)
 	if v.Name() == "" {
 		v = c.varLookupGlobal(name)
@@ -101,25 +113,28 @@ func (c *Core) varLookupLocal(register, name string) (v common.Variable) {
 	return varLookupRegistry(&c.varRegistryLocal, register, name)
 }
 
-func (c *Core) varLookupForeach(fileName, name string, stateIdx int) (_ common.Variable) {
-	if stateIdx > len(c.varRegistryForeach)-1 {
-		return nil
-	}
+func (c *Core) varLookupForeach(stateIdx int, name string) (_ common.Variable) {
+	// Allowed to traverse from parent loops but limit to the current state index.
+	idxs := c.feb.ReverseLoopOrder(stateIdx)
+	idxs = append([]int{stateIdx}, idxs...)
+	for i := len(idxs) - 1; i >= 0; i-- {
+		idx := idxs[i]
+		reg := strconv.Itoa(idx)
+		vars := c.varRegistryForeach.entries[reg]
+		for _, v := range vars {
+			if v.Name() != name {
+				continue
+			}
 
-	for _, reg := range c.varRegistryForeach[:stateIdx] {
-		v := varLookupRegistry(&reg, fileName, name)
-		if v.Name() == "" {
-			continue
+			return v
 		}
-
-		return v
 	}
 
 	return
 }
 
-func (c *Core) varLookupRecursive(fileName, name string, untilForeachIdx int) (_ []common.Variable) {
-	v := c.varLookupForeach(fileName, name, untilForeachIdx)
+func (c *Core) varLookupRecursive(fileName, name string, foreachStateIdx int) (_ []common.Variable) {
+	v := c.varLookupForeach(foreachStateIdx, name)
 	if v != nil {
 		return []common.Variable{v}
 	}
