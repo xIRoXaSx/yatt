@@ -56,7 +56,8 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 		if c.opts.PreserveIndent {
 			line = append(currentLineIndent, line...)
 		}
-		return c.feb.WriteLineToBuffer(line)
+		c.feb.WriteLineToBuffer(line)
+		return
 
 	default:
 		break

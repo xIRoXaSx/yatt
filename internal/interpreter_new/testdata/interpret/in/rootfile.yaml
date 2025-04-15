@@ -35,7 +35,7 @@ Template:
     Foreach: |
       # fastplate var var1 = var 1
       # fastplate var var2 = var 2
-      # fastplate var var3 = var 3
+      # fastplate var var3 = "   var 3   "
       # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
         loop=0, iteration= {{index}}, value={{value}}{{var(l1, {{value}})}}
         # fastplate foreach [ {{var1}} {{var2}} ]
@@ -47,7 +47,7 @@ Template:
             loop=3, iteration={{index}}, value={{value}}, l1={{l1}}, l2={{l2}}, l3={{l3}}
           # fastplate foreachend
           loop=1
-          loop=1
+          loop=1 with the function capitalize: {{capitalize(var1)}}
           loop=1
           # fastplate foreach [ {{var1}}, {{var2}} ]
             loop=4, iteration={{index}}, value={{value}}, l1={{l1}}, l2={{l2}}, l3={{l3}}

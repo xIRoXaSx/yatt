@@ -98,17 +98,13 @@ func (f *Buffer) MoveToPreviousState() {
 	f.stateEvalIdx = idx
 }
 
-func (f *Buffer) WriteLineToBuffer(v []byte) (err error) {
+func (f *Buffer) WriteLineToBuffer(v []byte) {
 	// If the last state is closed, we need to write to the latest state.
 	idx := f.stateEvalIdx
 	v = append(v, f.lineEnding...)
 	f.states[idx].lines = append(f.states[idx].lines, v)
-	if err != nil {
-		return
-	}
 
 	f.linesBuffered++
-	return
 }
 
 func (f *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err error) {

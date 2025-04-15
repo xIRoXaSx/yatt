@@ -38,7 +38,7 @@ func VarFromArg(arg []byte) (_ variable) {
 
 	return variable{
 		name:  string(bytes.TrimSpace(tokens[0])),
-		value: string(bytes.TrimSpace(TrimQuotes(tokens[1]))),
+		value: string(TrimQuotes(bytes.TrimSpace(tokens[1]))),
 	}
 }
 
