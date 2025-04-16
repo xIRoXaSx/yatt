@@ -10,7 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/xiroxasx/fastplate/internal/common"
-	"github.com/xiroxasx/fastplate/internal/interpreter_new/foreach"
+	"github.com/xiroxasx/fastplate/internal/interpreter/foreach"
 )
 
 const (

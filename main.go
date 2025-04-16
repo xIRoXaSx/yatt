@@ -37,7 +37,6 @@ func parseFlags() (a interpreter.Options) {
 	flag.BoolVar(&a.Verbose, "verbose", false, "print verbosely")
 	flag.StringVar(&a.InPath, "in", "", "the root path")
 	flag.StringVar(&a.OutPath, "out", "", "the output path. If not used, in will be overwritten")
-	flag.BoolVar(&a.UseCRLF, "crlf", false, "whether to split lines by \\r\\n or \\n")
 	flag.Var(&varFilePaths, "var", "the optional var file path.")
 	flag.Parse()
 
@@ -81,7 +80,7 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	ip := interpreter.New(&opts)
+	ip := interpreter.New(l, &opts)
 	err := ip.Start()
 	if err != nil {
 		l.Fatal().Err(err).Msg("error upon execution")

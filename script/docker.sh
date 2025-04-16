@@ -21,8 +21,8 @@ run_docker_multi_arch_build() {
 run_docker_test() {
     docker run --rm -it \
         --workdir="/work" \
-        --tmpfs="/work/internal/interpreter_new/testdata/imports/bin/" \
+        --tmpfs="/work/internal/interpreter/testdata/imports/bin/" \
         -v="$PWD:/work:ro" \
             "${DOCKER_IMG_MULTI_ARCH_TAG}" \
-            go test /work/internal/interpreter_new/...
+            go test /work/internal/interpreter/...
 }

@@ -11,7 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/fastplate/internal/interpreter_new/core"
+	"github.com/xiroxasx/fastplate/internal/interpreter/core"
 )
 
 const (

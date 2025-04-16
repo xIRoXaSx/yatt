@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	r "github.com/stretchr/testify/require"
-	"github.com/xiroxasx/fastplate/internal/interpreter_new/core"
+	"github.com/xiroxasx/fastplate/internal/interpreter/core"
 )
 
 func TestInterpreterImportCycle(t *testing.T) {

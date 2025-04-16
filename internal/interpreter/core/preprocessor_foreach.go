@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/xiroxasx/fastplate/internal/interpreter_new/foreach"
+	"github.com/xiroxasx/fastplate/internal/interpreter/foreach"
 )
 
 func (c *Core) foreachStart(pd *PreprocessorDirective) (err error) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/xiroxasx/fastplate/internal/common"
-	"github.com/xiroxasx/fastplate/internal/interpreter_new/functions"
+	"github.com/xiroxasx/fastplate/internal/interpreter/functions"
 )
 
 const (
