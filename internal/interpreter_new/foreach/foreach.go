@@ -136,12 +136,11 @@ func (b *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err err
 }
 
 func (b *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer) (err error) {
-	b.stateMx.Lock()
-	b.evalStateIdx = stateIdx
-	b.stateMx.Unlock()
-	defer func() {
-		b.evalStateIdx = 0
-	}()
+	resetState := func(idx int) {
+		b.stateMx.Lock()
+		b.evalStateIdx = idx
+		b.stateMx.Unlock()
+	}
 
 	vars, rangeNum := b.evaluationVars(b.states[stateIdx].fileName, tr, stateIdx)
 	if rangeNum > -1 {
@@ -152,6 +151,9 @@ func (b *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer
 			if err != nil {
 				return
 			}
+
+			// Jump back to the provided state for the next loop.
+			resetState(stateIdx)
 		}
 		return
 	}
@@ -164,6 +166,9 @@ func (b *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer
 		if err != nil {
 			return
 		}
+
+		// Jump back to the provided state for the next loop.
+		resetState(stateIdx)
 	}
 	return
 }
