@@ -126,6 +126,7 @@ func (b *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err err
 		return errors.New("unclosed states")
 	}
 
+	b.evalStateIdx = 0
 	defer func() {
 		b.stateMx.Lock()
 		b.evalStateIdx = -1
@@ -136,15 +137,10 @@ func (b *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err err
 }
 
 func (b *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer) (err error) {
-	resetState := func(idx int) {
-		b.stateMx.Lock()
-		b.evalStateIdx = idx
-		b.stateMx.Unlock()
-	}
-
-	vars, rangeNum := b.evaluationVars(b.states[stateIdx].fileName, tr, stateIdx)
+	vars, rangeNum := b.loopEnumerator(b.states[stateIdx].fileName, tr, stateIdx)
 	if rangeNum > -1 {
 		for i := 0; i < rangeNum; i++ {
+			// Evaluate each state (may be nested) accordingly.
 			err = b.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
 				common.NewVar("index", strconv.Itoa(i)),
 			}...)
@@ -152,13 +148,14 @@ func (b *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer
 				return
 			}
 
-			// Jump back to the provided state for the next loop.
-			resetState(stateIdx)
+			// Jump back to the first state for the next loop.
+			b.moveEvalState(stateIdx)
 		}
 		return
 	}
 
 	for i, v := range vars {
+		// Evaluate each state (may be nested) accordingly.
 		err = b.evalLines(stateIdx, lineNum, tr, dst, []common.Variable{
 			common.NewVar("index", strconv.Itoa(i)),
 			common.NewVar("value", v.Value()),
@@ -168,7 +165,7 @@ func (b *Buffer) eval(stateIdx int, lineNum int, tr TokenResolver, dst io.Writer
 		}
 
 		// Jump back to the provided state for the next loop.
-		resetState(stateIdx)
+		b.moveEvalState(stateIdx)
 	}
 	return
 }
@@ -192,10 +189,16 @@ line:
 				continue
 			}
 
+			// Prepare for the nested foreach loop.
+			b.moveEvalState(j.stateIdx)
+
 			err = b.eval(j.stateIdx, j.lineNum, tr, dst)
 			if err != nil {
 				return
 			}
+
+			// Revert state index.
+			b.moveEvalState(stateIdx)
 			continue line
 		}
 
@@ -219,7 +222,7 @@ line:
 	return
 }
 
-func (b *Buffer) evaluationVars(fileName string, tr TokenResolver, stateIdx int) (vs []common.Variable, rangeNum int) {
+func (b *Buffer) loopEnumerator(fileName string, tr TokenResolver, stateIdx int) (vs []common.Variable, rangeNum int) {
 	state := b.states[stateIdx]
 	variables := make([]common.Variable, 0)
 	argsLen := len(state.args)
@@ -265,4 +268,10 @@ func (b *Buffer) ReverseLoopOrder(stateIdx int) (idxs []int) {
 	}
 
 	return
+}
+
+func (b *Buffer) moveEvalState(stateIdx int) {
+	b.stateMx.Lock()
+	b.evalStateIdx = stateIdx
+	b.stateMx.Unlock()
 }

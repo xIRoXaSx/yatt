@@ -44,14 +44,14 @@ Template:
             loop=2, iteration={{index}}, value={{value}}{{var(l2, {{value}})}}
           # fastplate foreachend
           # fastplate foreach [ {{var1}}, {{var2}} ]
-            loop=3, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}
+            loop=3, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}{{var(l3, {{value}})}}
           # fastplate foreachend
           loop=1 {{l5}}, {{l3}} and {{l2}} are out of scope!
           loop=1 l1 and l0 are still in tact and can be used: l0:{{upper(l0)}}, l1:{{upper(l1)}}
           # fastplate foreach [ {{var1}}, {{var2}} ]
             loop=4, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}
             # fastplate foreach [ {{var1}}, {{var2}} ]
-              loop=5, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}
+              loop=5, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}{{var(l5, {{value}})}}
             # fastplate foreachend
           # fastplate foreachend
         # fastplate foreachend
