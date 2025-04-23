@@ -38,7 +38,7 @@ func (i *Interpreter) runDirMode(sourcePath, outPath string) (err error) {
 			return fmt.Errorf("dependency check: %v", err)
 		}
 
-		dest := strings.ReplaceAll(sourcePath, inPath, outPath)
+		dest := strings.ReplaceAll(inPath, sourcePath, outPath)
 		if entry.IsDir() {
 			if dest == "" {
 				// The root path can be skipped.
@@ -46,11 +46,7 @@ func (i *Interpreter) runDirMode(sourcePath, outPath string) (err error) {
 			}
 
 			// Create dirs along the way.
-			err = os.MkdirAll(dest, dirPerm)
-			if err != nil {
-				return err
-			}
-			return nil
+			return os.MkdirAll(dest, dirPerm)
 		}
 
 		err = i.writeInterpretedFile(inPath, dest)

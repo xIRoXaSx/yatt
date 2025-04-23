@@ -67,6 +67,25 @@ func TestStart(t *testing.T) {
 	r.NoError(t, ip.Start())
 }
 
+func TestStartDirMode(t *testing.T) {
+	rootDir := filepath.Join("testdata", "interpret")
+	rootInDir := filepath.Join(rootDir, "in")
+	rootOutDir := filepath.Join(rootDir, "out")
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	ip := New(l, &Options{
+		InPath:        rootInDir,
+		OutPath:       rootOutDir,
+		FileBlacklist: []string{"raw-copy.yaml"},
+		VarFilePaths:  []string{filepath.Join(rootInDir, "fastplate.var")},
+		Indent:        true,
+		NoStats:       true,
+	})
+
+	err := os.Setenv("TEST", "environment_variable")
+	r.NoError(t, err)
+	r.NoError(t, ip.Start())
+}
+
 //
 // Benchmarks
 //

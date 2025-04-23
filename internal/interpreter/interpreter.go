@@ -82,22 +82,22 @@ func (i *Interpreter) Start() (err error) {
 	}()
 
 	if stat.IsDir() {
+		i.opts.OutPath = filepath.Clean(i.opts.OutPath)
+		err = os.MkdirAll(i.opts.OutPath, 0o755)
+		if err != nil {
+			return
+		}
+
 		err = i.runDirMode(i.opts.InPath, i.opts.OutPath)
-		if err != nil {
-			return
-		}
-	} else {
-		outDir := filepath.Clean(filepath.Dir(i.opts.OutPath))
-		err = os.MkdirAll(outDir, 0o755)
-		if err != nil {
-			return
-		}
-		err = i.runFileMode(i.opts.InPath, i.opts.OutPath)
-		if err != nil {
-			return
-		}
+		return
 	}
 
+	outDir := filepath.Dir(filepath.Clean(i.opts.OutPath))
+	err = os.MkdirAll(outDir, 0o755)
+	if err != nil {
+		return
+	}
+	err = i.runFileMode(i.opts.InPath, i.opts.OutPath)
 	return
 }
 
