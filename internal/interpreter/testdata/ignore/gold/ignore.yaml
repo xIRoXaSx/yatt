@@ -1,3 +1,0 @@
-# This is a line above the ignore statement.
-test:
-  finished: This line should be visible at the end.

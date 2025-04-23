@@ -21,9 +21,9 @@ func (c *Core) importPath(pd *PreprocessorDirective) (err error) {
 	}
 
 	interFile := InterpreterFile{
-		Name:   path,
-		RC:     importFile,
-		Writer: pd.buf,
+		Name: path,
+		RC:   importFile,
+		Buf:  pd.buf,
 	}
 	err = c.interpret(interFile, pd.indent)
 	if err != nil {

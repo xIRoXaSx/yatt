@@ -1,9 +1,13 @@
 package core
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -125,7 +129,7 @@ func TestImportPaths(t *testing.T) {
 
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	c := New(l, []string{"# fastplate"}, Options{})
-	err := c.ImportPathCheckCyclicDependencies("testdata/imports/fileA.txt")
+	err := c.ImportPathCheckCyclicDependencies("testdata/deps/fileA.txt")
 	r.ErrorIs(t, err, errDependencyCyclic)
 }
 
@@ -260,7 +264,7 @@ func TestExecuteFunctions(t *testing.T) {
 	c.setLocalVar(localTestVarFileName, common.NewVar("test123", "321test"))
 	c.setLocalVar(localTestVarFileName, common.NewVar("123", "321"))
 
-	const testFileName = "testdata/test.txt"
+	const testFileName = "testdata/functions/test.txt"
 
 	type test struct {
 		funcName string
@@ -414,23 +418,23 @@ func TestExecuteFunctions(t *testing.T) {
 		{
 			funcName: functionNameCryptSHA1,
 			args:     []string{testFileName},
-			expected: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+			expected: "62b8c0e420a152e68182cd3fa32947dc628eccc5",
 		},
 		{
 			funcName: functionNameCryptSHA256,
 			args:     []string{testFileName},
-			expected: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+			expected: "0c6fb147ed8471d30fe62bdefce2becc6a589fc16442738e313165abba527e99",
 		},
 		{
 			funcName: functionNameCryptSHA512,
 			args:     []string{testFileName},
-			expected: "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff",
+			expected: "08f92f25ebe532d24c57c56a8467714e2b3ab2958f622a93e47ce073116e78f75ec3073c5ff8737a9223019c901754ffc96fed60b71e7af163fef28be6a98266",
 		},
 		// 30.
 		{
 			funcName: functionNameCryptMD5,
 			args:     []string{testFileName},
-			expected: "098f6bcd4621d373cade4e832627b4f6",
+			expected: "a8b518cddc851290ab1e1bb6b0b41072",
 		},
 		{
 			funcName: functionNameStringSplit,
@@ -516,6 +520,83 @@ func TestInterpreterResolveNested(t *testing.T) {
 	})
 	r.NoError(t, err)
 	r.Exactly(t, string(ret), "test 123 9")
+}
+
+func TestInterpreterImport(t *testing.T) {
+	t.Parallel()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	rootTestDir := filepath.Join("testdata", "imports")
+	in := filepath.Join(rootTestDir, "in", "startOk.txt")
+	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+
+	rc, err := os.Open(in)
+	r.NoError(t, err)
+	defer rc.Close()
+
+	buf := &bytes.Buffer{}
+	err = c.Interpret(InterpreterFile{
+		Name: in,
+		Buf:  buf,
+		RC:   rc,
+	})
+	r.NoError(t, err)
+
+	h := sha1.New()
+	_, err = h.Write(buf.Bytes())
+	r.NoError(t, err)
+	s := h.Sum(nil)
+	sum := make([]byte, hex.EncodedLen(len(s)))
+	_ = hex.Encode(sum, s)
+
+	r.True(t, bytes.Equal(sum, []byte("c5f70bc07c8a941f1091727896d3a7e495725abf")))
+}
+
+func TestInterpreterImportCycle(t *testing.T) {
+	t.Parallel()
+
+	prefixes := []string{"# fastplate"}
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	c := New(l, prefixes, Options{})
+
+	rootTestDir := filepath.Join("testdata", "imports", "in")
+	err := c.ImportPathCheckCyclicDependencies(filepath.Join(rootTestDir, "startOk.txt"))
+	r.NoError(t, err)
+
+	c = New(l, prefixes, Options{})
+	err = c.ImportPathCheckCyclicDependencies(filepath.Join(rootTestDir, "startFail.txt"))
+	r.Error(t, err)
+}
+
+func TestIgnore(t *testing.T) {
+	t.Parallel()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	inPath := filepath.Join("testdata", "ignore", "in", "ignore.yaml")
+	inFile, err := os.Open(inPath)
+	r.NoError(t, err)
+	defer func() {
+		_ = inFile.Close()
+	}()
+
+	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+	buf := &bytes.Buffer{}
+	err = c.Interpret(InterpreterFile{
+		Name: inPath,
+		Buf:  buf,
+		RC:   inFile,
+	})
+	r.NoError(t, err)
+
+	h := sha1.New()
+	_, err = h.Write(buf.Bytes())
+	r.NoError(t, err)
+	s := h.Sum(nil)
+	sum := make([]byte, hex.EncodedLen(len(s)))
+	_ = hex.Encode(sum, s)
+
+	r.True(t, bytes.Equal(sum, []byte("9b12b4004fdca14cd81c9378b6dc040feb39e730")))
 }
 
 //

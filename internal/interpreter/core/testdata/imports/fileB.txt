@@ -1,3 +1,0 @@
-# fastplate import testdata/imports/fileC.txt
-# fastplate import testdata/imports/fileF.txt
-# fastplate import testdata/imports/fileG.txt

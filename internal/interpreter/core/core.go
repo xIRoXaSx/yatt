@@ -74,9 +74,9 @@ func (i parserFunc) string() string {
 }
 
 type InterpreterFile struct {
-	Name   string
-	Writer io.Writer
-	RC     io.ReadCloser
+	Name string
+	Buf  io.Writer
+	RC   io.ReadCloser
 }
 
 func New(l zerolog.Logger, prefixes []string, opts Options) *Core {
@@ -168,7 +168,7 @@ func (c *Core) interpret(file InterpreterFile, additionalIndent []byte) (err err
 			line = line[len(lineIndet):]
 		}
 
-		err = c.searchTokensAndExecute(file.Name, line, currentLineIndent, file.Writer, lineNum)
+		err = c.searchTokensAndExecute(file.Name, line, currentLineIndent, file.Buf, lineNum)
 		if err != nil {
 			return
 		}

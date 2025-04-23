@@ -142,9 +142,9 @@ func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {
 
 	buf := &bytes.Buffer{}
 	interFile := core.InterpreterFile{
-		Name:   inPath,
-		RC:     inFile,
-		Writer: buf,
+		Name: inPath,
+		RC:   inFile,
+		Buf:  buf,
 	}
 	// Write to the buffer to ensure that files don't get partially written.
 	err = i.core.Interpret(interFile)

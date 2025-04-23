@@ -1,1 +1,0 @@
-# fastplate import testdata/imports/fileB.txt

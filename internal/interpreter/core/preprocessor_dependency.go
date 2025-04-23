@@ -25,6 +25,7 @@ func (c *Core) ImportPathCheckCyclicDependencies(startPath string) (err error) {
 	var (
 		// Limits reads to 65536 bytes per line.
 		scanner = bufio.NewScanner(file)
+		ln      int
 	)
 	for scanner.Scan() {
 		err = scanner.Err()
@@ -32,6 +33,7 @@ func (c *Core) ImportPathCheckCyclicDependencies(startPath string) (err error) {
 			return
 		}
 
+		ln++
 		line := bytes.TrimSpace(scanner.Bytes())
 		prefix := c.matchedPrefixToken(line)
 		if len(prefix) == 0 {
@@ -54,6 +56,7 @@ func (c *Core) ImportPathCheckCyclicDependencies(startPath string) (err error) {
 			fileName: startPath,
 			args:     split[1:],
 			buf:      &bytes.Buffer{},
+			lineNum:  ln,
 		}
 		err = c.walkDependency(pd)
 		if err != nil {
@@ -102,11 +105,8 @@ func (c *Core) walkDependency(pd *PreprocessorDirective) (err error) {
 
 		// Check if line contains import statement.
 		importSplit := bytes.Split(line, fmt.Appendf(nil, "%s %s", prefix, preprocessorImportName))
-		if len(importSplit) == 0 {
+		if len(importSplit) != 2 {
 			continue
-		} else if len(importSplit) < 2 {
-			// Incorrect usage of the import statement.
-			return errDependencyUnknownSyntax
 		}
 
 		// We got the path to import.
