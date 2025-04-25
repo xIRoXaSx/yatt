@@ -54,10 +54,9 @@ type Options struct {
 type ignoreIndexes map[string]ignoreState
 
 type registries struct {
-	varRegistryForeach    variableRegistry
-	varRegistryLocal      variableRegistry
-	varRegistryGlobal     variableRegistry
-	varRegistryGlobalFile variableRegistry
+	varRegistryForeach variableRegistry
+	varRegistryLocal   variableRegistry
+	varRegistryGlobal  variableRegistry
 }
 
 type variableRegistry struct {
@@ -101,10 +100,9 @@ func New(l zerolog.Logger, prefixes []string, opts Options) *Core {
 		Mutex:        &sync.Mutex{},
 		depsResolver: newDependencyResolver(),
 		registries: registries{
-			varRegistryForeach:    newVarReg(),
-			varRegistryLocal:      newVarReg(),
-			varRegistryGlobal:     newVarReg(),
-			varRegistryGlobalFile: newVarReg(),
+			varRegistryForeach: newVarReg(),
+			varRegistryLocal:   newVarReg(),
+			varRegistryGlobal:  newVarReg(),
 		},
 	}
 }

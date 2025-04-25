@@ -257,14 +257,20 @@ func TestVariableSetAndGet(t *testing.T) {
 func TestExecuteFunctions(t *testing.T) {
 	t.Parallel()
 
-	const localTestVarFileName = "test-filename.txt"
+	const (
+		localTestVarFileName = "test-filename.txt"
+		testFileName         = "testdata/functions/test.txt"
+		testEnvVarName       = "test"
+		testEnvVarValue      = "test123"
+	)
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	c := New(l, nil, Options{})
 	c.setGlobalVar(common.NewVar("test123", "321test"))
 	c.setLocalVar(localTestVarFileName, common.NewVar("test123", "321test"))
 	c.setLocalVar(localTestVarFileName, common.NewVar("123", "321"))
 
-	const testFileName = "testdata/functions/test.txt"
+	err := os.Setenv(testEnvVarName, testEnvVarValue)
+	r.NoError(t, err)
 
 	type test struct {
 		funcName string
@@ -300,7 +306,6 @@ func TestExecuteFunctions(t *testing.T) {
 			args:     []string{"2", "3", "4"},
 			expected: 24,
 		},
-		// 5.
 		{
 			funcName: functionNameMathMult,
 			args:     []string{"  2  ", "  3  ", "  -4  "},
@@ -326,7 +331,6 @@ func TestExecuteFunctions(t *testing.T) {
 			args:     []string{"  3  ", "  -4  "},
 			expected: 0.012345679,
 		},
-		// 10.
 		{
 			funcName: functionNameMathSqrt,
 			args:     []string{"3"},
@@ -352,7 +356,6 @@ func TestExecuteFunctions(t *testing.T) {
 			args:     []string{"1.23205080757"},
 			expected: 2,
 		},
-		// 15.
 		{
 			funcName: functionNameMathCeil,
 			args:     []string{"  -1.23205080757  "},
@@ -378,7 +381,6 @@ func TestExecuteFunctions(t *testing.T) {
 			args:     []string{"  -1.73205080757  ", "  5  "},
 			expected: -1.73205,
 		},
-		// 20.
 		{
 			funcName: functionNameMathMax,
 			args:     []string{"2", "3", "4"},
@@ -404,7 +406,6 @@ func TestExecuteFunctions(t *testing.T) {
 			args:     []string{"2", "3"},
 			expected: 2,
 		},
-		// 25.
 		{
 			funcName: functionNameMathMod,
 			args:     []string{"  2  ", "  -4  "},
@@ -430,16 +431,30 @@ func TestExecuteFunctions(t *testing.T) {
 			args:     []string{testFileName},
 			expected: "08f92f25ebe532d24c57c56a8467714e2b3ab2958f622a93e47ce073116e78f75ec3073c5ff8737a9223019c901754ffc96fed60b71e7af163fef28be6a98266",
 		},
-		// 30.
 		{
 			funcName: functionNameCryptMD5,
 			args:     []string{testFileName},
 			expected: "a8b518cddc851290ab1e1bb6b0b41072",
 		},
 		{
-			funcName: functionNameStringSplit,
-			args:     []string{"test|123", "|", "1"},
-			expected: "123",
+			funcName: functionNameInternalEnv,
+			args:     []string{testEnvVarName},
+			expected: testEnvVarValue,
+		},
+		{
+			funcName: functionNameInternalFileBaseName,
+			fileName: testFileName,
+			expected: filepath.Base(testFileName),
+		},
+		{
+			funcName: functionNameInternalFileName,
+			fileName: testFileName,
+			expected: testFileName,
+		},
+		{
+			funcName: functionNameStringCapitalize,
+			args:     []string{"test"},
+			expected: "Test",
 		},
 		{
 			funcName: functionNameStringRepeat,
@@ -452,11 +467,25 @@ func TestExecuteFunctions(t *testing.T) {
 			expected: "test+test+test+",
 		},
 		{
+			funcName: functionNameStringSplit,
+			args:     []string{"test|123", "|", "1"},
+			expected: "123",
+		},
+		{
+			funcName: functionNameStringToLower,
+			args:     []string{"TEST"},
+			expected: "test",
+		},
+		{
+			funcName: functionNameStringToUpper,
+			args:     []string{"test"},
+			expected: "TEST",
+		},
+		{
 			funcName: functionNameStringLength,
 			args:     []string{"test"},
 			expected: "4",
 		},
-		// 35.
 		{
 			funcName: functionNameInternalVar,
 			args:     []string{"test", "value"},
@@ -509,7 +538,7 @@ func TestExecuteFunctions(t *testing.T) {
 	}
 }
 
-func TestInterpreterResolveNested(t *testing.T) {
+func TestResolveNested(t *testing.T) {
 	t.Parallel()
 
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -522,7 +551,7 @@ func TestInterpreterResolveNested(t *testing.T) {
 	r.Exactly(t, string(ret), "test 123 9")
 }
 
-func TestInterpreterImport(t *testing.T) {
+func TestImport(t *testing.T) {
 	t.Parallel()
 
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -552,7 +581,7 @@ func TestInterpreterImport(t *testing.T) {
 	r.True(t, bytes.Equal(sum, []byte("c5f70bc07c8a941f1091727896d3a7e495725abf")))
 }
 
-func TestInterpreterImportCycle(t *testing.T) {
+func TestImportCycle(t *testing.T) {
 	t.Parallel()
 
 	prefixes := []string{"# fastplate"}
@@ -597,6 +626,59 @@ func TestIgnore(t *testing.T) {
 	_ = hex.Encode(sum, s)
 
 	r.True(t, bytes.Equal(sum, []byte("9b12b4004fdca14cd81c9378b6dc040feb39e730")))
+}
+
+func TestInitLocalVariablesByFiles(t *testing.T) {
+	t.Parallel()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	inPath := filepath.Join("testdata", "vars", "in", "start.yaml")
+	inFile, err := os.Open(inPath)
+	r.NoError(t, err)
+	defer func() {
+		_ = inFile.Close()
+	}()
+
+	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+	buf := &bytes.Buffer{}
+
+	vars := c.VarsLookupGlobal()
+	r.Exactly(t, 0, len(vars))
+
+	c.InitLocalVariablesByFiles(filepath.Join("testdata", "vars", "in", "fastplate.var"))
+	err = c.Interpret(InterpreterFile{
+		Name: inPath,
+		Buf:  buf,
+		RC:   inFile,
+	})
+	r.NoError(t, err)
+	r.Exactly(t, "1\n", buf.String())
+
+	vars = c.VarsLookupGlobal()
+	r.Exactly(t, 1, len(vars))
+}
+
+func TestForeach(t *testing.T) {
+	t.Parallel()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	inPath := filepath.Join("testdata", "foreach", "in", "foreach.yaml")
+	inFile, err := os.Open(inPath)
+	r.NoError(t, err)
+	defer func() {
+		_ = inFile.Close()
+	}()
+
+	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+	buf := &bytes.Buffer{}
+
+	err = c.Interpret(InterpreterFile{
+		Name: inPath,
+		Buf:  buf,
+		RC:   inFile,
+	})
+	r.NoError(t, err)
+	r.Exactly(t, "\n0 * 1 = 0\n\n1 * 2 = 2\n\n2 * 3 = 6\n", buf.String())
 }
 
 //

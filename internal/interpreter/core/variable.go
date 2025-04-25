@@ -169,11 +169,15 @@ func (c *Core) varLookupRecursive(fileName, name string, foreachStateIdx int) (_
 }
 
 func (c *Core) varsLookupGlobalFile(register string) (v []common.Variable) {
-	return c.varRegistryGlobalFile.entries[register]
+	return c.varRegistryGlobal.entries[register]
 }
 
 func (c *Core) varsLookupGlobal() (v []common.Variable) {
-	return c.varRegistryGlobalFile.entries[variableRegistryGlobalRegister]
+	v = make([]common.Variable, 0)
+	for _, vars := range c.varRegistryGlobal.entries {
+		v = append(v, vars...)
+	}
+	return
 }
 
 func varLookupRegistry(reg *variableRegistry, register, varName string) (v common.Variable) {
