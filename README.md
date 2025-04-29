@@ -1,22 +1,22 @@
-# fastplate
+# yatt
 ## Description
-A fast templating engine for text files.  
-No matter if you need to unclutter massive files and split them up, do basic calculations or loop over variables, 
-fastplate got you covered!
+Yet another templating engine for text files.  
+No matter if you need to unclutter massive files and split them up, do basic calculations or loop over variables, yatt got you covered!
 
 ## Setup
-To use fastplate, download the latest [release](https://github.com/xIRoXaSx/fastplate/releases) or clone and build the project locally.  
-After that, create templates of your files and give it a run with the required [options](#cli-options).  
-Fitting your requirements, you can also use optional [variables](#variables), [functions](#functions) and [loop](#loops) features.  
+To use yatt, download the latest [release](https://github.com/xIRoXaSx/yatt/releases) or clone 
+and build (`CGO_ENABLED=0 go build -o="yatt" .`) the project locally.  
+After that, create templates of your files and give it a run with either a start file or directory.  
+Fitting your requirements, you can use optional [variables](#variables), [functions](#functions) or [preprocessors](#preprocessors).  
 
 ## CLI options
 You can pass the listed arguments / options down below.  
 
 | Argument        | Description                                                                                    |
 |-----------------|------------------------------------------------------------------------------------------------|
-| -in {FilePath}  | The input path to complete.                                                                    |
+| -in {FilePath}  | The input path of your template(s) to complete.                                                |
 | -out {FilePath} | The output path for the completed template(s).                                                 |
-| -var {FilePath} | The optional variable file path for unscoped variables.                                        |
+| -var {FilePath} | The optional variable file path for global variables.                                          |
 | -blacklist      | Regex pattern(s) to describe which files should not be interpreted.                            |
 | -whitelist      | Regex pattern(s) to describe which files should be interpreted .                               |
 | -verbose        | Enables the verbose print option.                                                              |
@@ -24,39 +24,37 @@ You can pass the listed arguments / options down below.
 | -indent         | Enable indention. Spaces / tabs in front of `import` statements will be used for the partials. |
 | -crlf           | Split and join contents by CRLF (\r\n) instead of LF (\n).                                     |
 
-### Example
-1. Complete template "tempalte.json":  
-   `fastplate -in tempalte.json -out completed.json -var fastplate.var`
+### Usage
+1. Complete template "template.json":  
+   `yatt -in template.json -out completed.json -var yatt.var`
 
 ---
 
 2. Complete multiple templates inside the directory "src":  
-   `fastplate -in src/ -out dest/ -indent`
+   `yatt -in src/ -out dest/ -indent`
 
 ---
 
 ## Syntax
-The syntax for various interpretations are shown in the table down below.  
-The prefix `# fastplate` is always needed for fastplate's  interpretations and can also be used in form of `#fastplate`.  
+### Preprocessors
+Preprocessors can be used to manipulate text before it gets interpreted.  
+The prefix `# yatt` or `// yatt` is always required for interpretations.  
+The following table contains all available operations:  
 
-| Syntax                  | Description                                                                                                        |
-|-------------------------|--------------------------------------------------------------------------------------------------------------------|
-| import {FilePath}       | Import a file into the current template / partial. Paths are always relational to the working dir.                 |
-| var {Name} = {Value}    | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                                            |
-| ignore {start / end}    | Starts / ends a ignore block. Lines between these declarations will not be written to the output file.             |
-| foreach [{{var1}}, ...] | Loops over each variable until it hits `foreachend`. Use `{{value}}` and `{{index}}` respectively inside the loop. |
-| foreachend              | Signals the end of the foreach loop.                                                                               |
+| Preprocessor         | Description                                                                                        | Example                                  |
+|----------------------|----------------------------------------------------------------------------------------------------|------------------------------------------|
+| import               | Import a file into the current template / partial. Paths are always relational to the working dir. | `# yatt import my/test/file.txt`         |
+| var                  | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                            | `# yatt var myVar = 123`                 |
+| ignore / ignoreend   | Starts / ends a ignore block. Lines between these declarations will not be written to the output.  | `# yatt ignore` ... `# yatt ignoreend`   |
+| foreach / foreachend | Loops over each variable until `foreachend`. Use `{{value}}` and `{{index}}` inside the loop.      | `# yatt foreach` ... `# yatt foreachend` |
 
 ### Variables
-Import variables can be declared and used from inside the template / partial file (= scoped / local) or 
-via an additional variable file (default: `fastplate.var`), which variables can be used throughout every 
-template / partial (= unscoped / global).  
-The syntax to declare both variable types is the same.  
-fastplate automatically looks for `fastplate.var` in the current working directory. If existing, you can use the unscoped 
-variables without passing in the `-var` argument.
+Variables can be declared and used from inside the templated file (local, can only be used inside this file) or via an additional file, 
+which variables can be used throughout every template (global variables).  
+The syntax for both variable scopes is identical.  
 
 #### Functions
-Functions can be combined / nested like in the following example: `{{func_1(arg1, arg2, {{func_2(arg3, arg4)}})}}`.
+Functions can be combined / nested as you like, e.g.: `{{func_1(arg1, arg2, {{func_2(arg3, arg4)}})}}`.
 You can use the following functions for any type of variable or static values:
 
 | Function name | Description                                                                                     | Example                                |
@@ -70,7 +68,6 @@ You can use the following functions for any type of variable or static values:
 | max()         | Chooses the maximum of the given numbers (variable or static values possible).                  | `{{max(varName, ...)}}`                |
 | min()         | Chooses the minimum of the given numbers (variable or static values possible).                  | `{{min(varName, ...)}}`                |
 | mod()         | Calculates the modulo (variable or static values possible).                                     | `{{mod(varName, ...)}}`                |
-| modmin()      | Same as `mod` but defaults to `min` when remainder is 0 (variable or static values possible).   | `{{modmin(varName, ..., min)}}`        |
 | env()         | Prints the value of the given environment variable.                                             | `{{env(ENV_VAR)}}`                     |
 | floor()       | Rounds down the given value to the nearest integer value.                                       | `{{floor(varName)}}`                   |
 | ceil()        | Rounds up the given value to the nearest integer value.                                         | `{{ceil(varName)}}`                    |
@@ -87,75 +84,75 @@ You can use the following functions for any type of variable or static values:
 | split()       | Splits the value by `seperator` and print the element at `index`.                               | `{{split(varName, seperator, index)}}` |
 | repeat()      | Repeats the given value `amount` times.                                                         | `{{repeat(varName, amount)}}`          |
 | replace()     | Replaces `old` in the given value `value` with `new`.                                           | `{{replace(value, old, new)}}`         |
-| fbasename()   | Prints the current file's base name (filename + extension)                                      | `{{fbasename()}}`                      |
-| fname()       | Prints the current file's name (relative path included)                                         | `{{fname()}}`                          |
-| len()         | Either prints the length or the amount of variables (`UNSCOPED_VARS`) of the given value        | `{{len(varName)}}`                     |
-| var()         | Creates a new scoped variable which can be used after the declaration.                          | `{{var(varName, value)}}`              |
+| basename()    | Prints the current file's base name (filename + extension).                                     | `{{basename()}}`                       |
+| name()        | Prints the current file's name (relative path included).                                        | `{{name()}}`                           |
+| len()         | Either prints the length of the given value or the amount of variables (`YATT_VARS`).           | `{{len(varName)}}`                     |
+| var()         | Creates a new local variable which can be used after the declaration.                           | `{{var(varName, value)}}`              |
 
 ### Loops
-Looping over multiple variables can be implemented by using the `foreach` syntax.  
-For every iteration you can retrieve the index with `{{index}}` and the value with `{{value}}`.  
-By declaring variables (no matter if scoped or unscoped), you can loop over selected ones like so (`[]` brackets are optional):  
+Looping over multiple variables can be done by using the `foreach` syntax.  
+For every iteration of a foreach loop, you can retrieve the index with `{{index}}` and the value with `{{value}}`.  
+By declaring variables, you can loop over selected ones like so (`[]` brackets are optional):  
 ```
-# fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+# yatt foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
    Insert your value to repeat here.
-# fastplate foreachend 
+# yatt foreachend
 ```
 
-If you have countless variables, you can put all of those variables into a dedicated [var files](#variables) and use 
-the special variable `{{UNSCOPED_VARS}}`.  
-This way, fastplate will loop over each unscoped variable automatically (`[]` brackets are optional):
+If you have countless variables, you can put all of those variables into a dedicated file (described in [variables](#variables)) and use 
+the special variable `{{YATT_VARS}}`.  
+This way, yatt will loop over each global variable automatically (`[]` brackets are optional):
 ```
-# fastplate foreach [ {{UNSCOPED_VARS}} ]
+# yatt foreach [ {{YATT_VARS}} ]
    Insert your value to repeat here.
-# fastplate foreachend 
+# yatt foreachend 
 ```
 
-In addition to the latter option, you can also restrict the variables to use to one specific variable file.  
-In order to do so, you need to add the prefix `_` and the base name of your var file (without the extension, case-insensitive) 
-like in this example (`[]` brackets are optional):  
+In addition to the latter option, you can also restrict the loop to use variables of one specific file.  
+In order to do so, you need to add `_` and the file path of your file like in this example (`[]` brackets are optional):  
 ```
-# fastplate foreach [ {{UNSCOPED_VARS_yourVarFileName}} ]
+# yatt foreach [ {{YATT_VARS_myVariables.txt}} ]
    Insert your value to repeat here.
-# fastplate foreachend 
+# yatt foreachend 
 ```
 
 These special variables are currently only supported for the `foreach` loop!
 
 You can also use an integer value for the foreach loop to use it as a for 0 - n loop.  
-The value needs to be either statically typed (`5`) or stored in a variable (`{{iterations}}`).  
+The value needs to be either statically typed (`5`) or stored in a variable (e.g.: `{{iterations}}`).  
+For every iteration of a foreach loop, only the `{{index}}` variable is dynamically created.  
 Here is an example (`[]` brackets are optional):  
 ```
-# fastplate foreach [ 5 ]
+# yatt foreach [ 5 ]
    Insert your value to repeat here.
-# fastplate foreachend
+# yatt foreachend
 
 OR
 
-# fastplate iterations = 5
-# fastplate foreach [ {{iterations}} ]
+# yatt iterations = 5
+# yatt foreach [ {{iterations}} ]
    Insert your value to repeat here.
-# fastplate foreachend
+# yatt foreachend
 ```
 
 TIP:
-For nested loops, you can also use the `var` function to create a dynamic scoped variable.  
-This way you are able to use the outer `index`, `value` and `name` variables inside a child loop.  
+For nested loops, you can also use the `var` function to create a dynamic, foreach-scoped variable.  
+This way you are able to use the outer `index` and `value` variables inside a child loop.  
 Here is an example (`[]` brackets are optional):
 ```
-# fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+# yatt foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
    {{var(outerIndex, index)}}
-   # fastplate foreach [ {{var1}}, {{var2}}, {{var3}}, {{unscoped_threshold}} ]
+   # yatt foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
       Outer index: {{outerIndex}}, inner index: {{index}}
-   # fastplate foreachend 
-# fastplate foreachend 
+   # yatt foreachend 
+# yatt foreachend 
 ```
 
-### Example
+### Examples
 1. Import `src/partials/world.txt` (which contains "World!") into the current template.
 ```text
 Hello
-   # fastplate import src/partials/world.txt
+   # yatt import src/partials/world.txt
 ```
 
 Result:
@@ -166,9 +163,9 @@ Hello
 
 ---
 
-2. Declare and use a scoped variable:
+2. Declare and use a local variable:
 ```text
-# fastplate var world = World!
+# yatt var world = World!
 Hello
    {{world}}
 ```
@@ -181,10 +178,10 @@ Hello
 
 ---
 
-3. Declare and use an unscoped variable:  
-   File fastplate.var:
+3. Declare and use an global variable:  
+   File yatt.var:
 ```text
-# fastplate var world = World!
+# yatt var world = World!
 ```
 
 Template:
@@ -200,15 +197,15 @@ Hello
 
 ---
 
-4. Use a foreach loop to iterate over specific variables (`[]` brackets are optional), may also be used with unscoped vars:
+4. Use a foreach loop to iterate over specific variables (`[]` brackets are optional):
 ```text
 Shopping list:
-# fastplate var apples = Apples
-# fastplate var oranges = Oranges
-# fastplate var bananas = Bananas
-# fastplate foreach [ {{apples}}, {{oranges}}, {{bananas}} ]
+# yatt var apples = Apples
+# yatt var oranges = Oranges
+# yatt var bananas = Bananas
+# yatt foreach [ {{apples}}, {{oranges}}, {{bananas}} ]
   {{index}}.) 2x {{value}}
-# fastplate foreachend
+# yatt foreachend
 ```
 
 Result:
@@ -221,17 +218,17 @@ Shopping list:
 
 ---
 
-5. Use a foreach loop to iterate over every **unscoped** variable (`[]` brackets are optional):  
-   File fastplate.var:
+5. Use a foreach loop to iterate over **every global** variable (`[]` brackets are optional):  
+   File yatt.var:
 ```text
-# fastplate var hello = Hello
-# fastplate var world = World!
+# yatt var hello = Hello
+# yatt var world = World!
 ```
 
 ```text
-# fastplate foreach [ {{UNSCOPED_VARS}} ]
+# yatt foreach [ {{YATT_VARS}} ]
   {{index}} -> {{value}}
-# fastplate foreachend
+# yatt foreachend
 ```
 
 Result:
@@ -245,9 +242,9 @@ Result:
 6. Use functions:
 ```text
 Shopping list:
-  # fastplate var apples = APPLES
-  # fastplate var oranges = oranges
-  # fastplate var bananas = bananas
+  # yatt var apples = APPLES
+  # yatt var oranges = oranges
+  # yatt var bananas = bananas
   2x {{lower(apples)}}
   2x {{upper(oranges)}}
   2x {{cap(bananas)}}

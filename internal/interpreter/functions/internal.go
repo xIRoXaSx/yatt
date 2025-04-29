@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 func Var(fileName string, args [][]byte, additionalVars []common.Variable, varSetter func(name, value []byte) error) (ret []byte, err error) {

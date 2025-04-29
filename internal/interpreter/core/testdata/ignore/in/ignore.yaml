@@ -1,12 +1,12 @@
 # This is a line above the ignore statement.
 test:
-  # fastplate ignore
+  # yatt ignore
   ignored: |
     These lines should be ignored.
 
-    # fastplate ignore
+    # yatt ignore
       Nested ignore statements should always be ignored because of the first evaluated ignore preprocessor.
-    # fastplate ignoreend
+    # yatt ignoreend
     Since the first ignore statement is still in use, this line is also not output.
-  # fastplate ignoreend
+  # yatt ignoreend
   finished: This line should be visible at the end.

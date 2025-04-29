@@ -1,28 +1,27 @@
-# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
-#     _____                 __         .__          __
-#   _/ ____\____    _______/  |_______ |  | _____ _/  |_  ____
-#   \   __\\__  \  /  ___/\   __\____ \|  | \__  \\   __\/ __ \
-#    |  |   / __ \_\___ \  |  | |  |_> >  |__/ __ \|  | \  ___/
-#    |__|  (____  /____  > |__| |   __/|____(____  /__|  \___  >
-#               \/     \/       |__|             \/          \/
-# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
+# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
+# _____.___.  ___________________________
+# \__  |   | /  _  \__    ___/\__    ___/
+#  /   |   |/  /_\  \|    |     |    |
+#  \____   /    |    \    |     |    |
+#  / ______\____|__  /____|     |____|
+#  \/              \/
+# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
 #
 # > What is this file used for?
 #    This file is designed to run with grml to simplify various tasks.
 #    Head over to https://github.com/ILizardNetwork/grml, get / compile and setup grml.
 #    Afterwards you can use these tasks.
 version: 3
-project: fastplate
+project: yatt
 
 env:
-    VERSION:  v1.1.5
-    BIN_NAME: fastplate
-    PKG_DIR: internal/interpreter
+    VERSION:  v2.0.0
+    BIN_NAME: yatt
 
     # Docker env vars.
     DOCKER_DIR: ${ROOT}/docker
-    DOCKER_IMG_MULTI_ARCH_TAG: golang:1.23.5-bookworm
-    DOCKER_IMG_TAG: fastplate:latest
+    DOCKER_IMG_TAG_BUILD: golang:1.23.5-bookworm
+    DOCKER_IMG_TAG: yatt:latest
 
     # Golang env vars.
     GOOS:   linux
@@ -37,7 +36,7 @@ commands:
         help: build the project locally
         exec: |
             mkdir -p bin
-            CGO_ENABLED=0 go build -o="bin/${BIN_NAME}-v${VERSION}" .
+            CGO_ENABLED=0 go build -o="bin/${BIN_NAME}-${VERSION}" .
         commands:
             run:
                 help: run the binary
@@ -58,12 +57,12 @@ commands:
     run:
         help: run the binary with the testdata as input
         exec: |
-            cd "${PKG_DIR}"
-            mkdir -p "testdata/dest"
-            ${ROOT}/bin/${BIN_NAME}-v${VERSION} \
-                -in="testdata/src/" \
-                -out="testdata/dest/" \
-                -var="testdata/fastplate.var" \
+            cd "${ROOT}/internal/interpreter/"
+            mkdir -p "interpret/out"
+            TEST=test ${ROOT}/bin/${BIN_NAME}-${VERSION} \
+                -in="testdata/interpret/in/rootfile.yaml" \
+                -var="testdata/interpret/in/yatt.var" \
+                -out="testdata/interpret/out/rootfile.yaml" \
                 -indent
 
     test:
@@ -80,17 +79,17 @@ commands:
             interpreter:
                 help: benchmark the file interpretation
                 exec: |
-                    cd "${PKG_DIR}"
+                    cd "${ROOT}/internal/interpreter"
                     go test \
                         -test.benchmem \
                         -test.bench="^\QBenchmarkFileInterpretation\E$" \
-                        -run=^$github.com/xiroxasx/fastplate/interpreter
+                        -run=^$github.com/xiroxasx/yatt/interpreter
 
             writer:
                 help: benchmark the file interpretation with corresponding outputs
                 exec: |
-                    cd "${PKG_DIR}"
+                    cd "${ROOT}/internal/interpreter"
                     go test \
                         -benchmem \
                         -bench="^\QBenchmarkFileWrites\E$" \
-                        -run=^$github.com/xiroxasx/fastplate/interpreter
+                        -run=^$github.com/xiroxasx/yatt/interpreter

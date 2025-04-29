@@ -11,7 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/fastplate/internal/interpreter"
+	"github.com/xiroxasx/yatt/internal/interpreter"
 )
 
 type MultiString []string
@@ -50,7 +50,7 @@ func main() {
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	if len(os.Args) == 1 {
-		l.Error().Msg("invalid syntax: fastplate <path> [options]")
+		l.Error().Msg("invalid syntax: yatt <path> [options]")
 		return
 	}
 

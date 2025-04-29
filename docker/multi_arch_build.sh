@@ -4,7 +4,7 @@ apt update && apt install -y zip
 cd /data
 os=("windows" "linux" "darwin" "freebsd" "openbsd" "windows")
 arch=("386" "amd64" "arm" "arm64")
-binName="fastplate"
+binName="${PROJECT:-yatt}"
 
 for o in "${os[@]}" ; do
   for a in "${arch[@]}" ; do

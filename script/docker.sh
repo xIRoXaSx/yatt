@@ -14,15 +14,18 @@ run_docker_multi_arch_build() {
         --entrypoint="/bin/sh" \
         -v="$PWD:/data:ro" \
         -v="$PWD/bin:/build" \
-            "${DOCKER_IMG_MULTI_ARCH_TAG}" \
+            "${DOCKER_IMG_TAG_BUILD}" \
             -c /data/docker/multi_arch_build.sh
 }
 
 run_docker_test() {
     docker run --rm -it \
         --workdir="/work" \
-        --tmpfs="/work/internal/interpreter/testdata/imports/bin/" \
+        --tmpfs="/work/internal/interpreter/testdata/interpret/out" \
         -v="$PWD:/work:ro" \
-            "${DOCKER_IMG_MULTI_ARCH_TAG}" \
-            go test /work/internal/interpreter/...
+            "${DOCKER_IMG_TAG_BUILD}" \
+            go test \
+                /work/internal/common/... \
+                /work/internal/interpreter/...  \
+                /work/internal/interpreter/core/...
 }

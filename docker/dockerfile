@@ -6,9 +6,9 @@ RUN apk update \
     && apk add --no-cache go \
     && mkdir /data \
     && cd /work \
-    && CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -ldflags "-w -extldflags '-static'" -o "/data/fastplate"
+    && CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -ldflags "-w -extldflags '-static'" -o "/data/yatt"
 
 FROM alpine:latest
-COPY --from=builder "/data/fastplate" /data/
+COPY --from=builder "/data/yatt" /data/
 WORKDIR /work
-ENTRYPOINT ["/data/fastplate"]
+ENTRYPOINT ["/data/yatt"]

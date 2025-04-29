@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/common"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -87,13 +87,13 @@ func ToUpper(args [][]byte) (ret []byte, err error) {
 	return
 }
 
-func Length(args [][]byte, globalVarLen int, localVarLenRetrieverFn func(name string) int) (ret []byte, err error) {
+func Length(args [][]byte, globalVarLen int, globalVarLenRetrieverFn func(name string) int) (ret []byte, err error) {
 	err = assertArgsLengthExact(args, 1)
 	if err != nil {
 		return
 	}
 
-	const globalVarKey = "FASTPLATE_VARS"
+	const globalVarKey = "YATT_VARS"
 	var (
 		length int
 		arg    = args[0]
@@ -107,7 +107,7 @@ func Length(args [][]byte, globalVarLen int, localVarLenRetrieverFn func(name st
 	if varFile == globalVarKey {
 		length = globalVarLen
 	} else {
-		length = localVarLenRetrieverFn(varFile)
+		length = globalVarLenRetrieverFn(varFile)
 	}
 	ret = []byte(strconv.Itoa(length))
 

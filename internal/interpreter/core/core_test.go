@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	r "github.com/stretchr/testify/require"
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 const floatThreshold = 1e-9
@@ -128,7 +128,7 @@ func TestImportPaths(t *testing.T) {
 	t.Parallel()
 
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	c := New(l, []string{"# fastplate"}, Options{})
+	c := New(l, []string{"# yatt"}, Options{})
 	err := c.ImportPathCheckCyclicDependencies("testdata/deps/fileA.txt")
 	r.ErrorIs(t, err, errDependencyCyclic)
 }
@@ -258,16 +258,16 @@ func TestExecuteFunctions(t *testing.T) {
 	t.Parallel()
 
 	const (
-		localTestVarFileName = "test-filename.txt"
-		testFileName         = "testdata/functions/test.txt"
-		testEnvVarName       = "test"
-		testEnvVarValue      = "test123"
+		testVarFileName = "test-filename.txt"
+		testFileName    = "testdata/functions/test.txt"
+		testEnvVarName  = "test"
+		testEnvVarValue = "test123"
 	)
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	c := New(l, nil, Options{})
 	c.setGlobalVar(common.NewVar("test123", "321test"))
-	c.setLocalVar(localTestVarFileName, common.NewVar("test123", "321test"))
-	c.setLocalVar(localTestVarFileName, common.NewVar("123", "321"))
+	c.setLocalVar(testVarFileName, common.NewVar("test123", "321test"))
+	c.setLocalVar(testVarFileName, common.NewVar("123", "321"))
 
 	err := os.Setenv(testEnvVarName, testEnvVarValue)
 	r.NoError(t, err)
@@ -498,15 +498,15 @@ func TestExecuteFunctions(t *testing.T) {
 		},
 		{
 			funcName: functionNameStringLength,
-			fileName: localTestVarFileName,
-			args:     []string{"FASTPLATE_VARS"},
+			fileName: testVarFileName,
+			args:     []string{"YATT_VARS"},
 			expected: "1",
 		},
 		{
 			funcName: functionNameStringLength,
-			fileName: localTestVarFileName,
-			args:     []string{"FASTPLATE_VARS_" + localTestVarFileName},
-			expected: "2",
+			fileName: testVarFileName,
+			args:     []string{"YATT_VARS_" + testVarFileName},
+			expected: "0",
 		},
 		{
 			funcName: "n/a",
@@ -557,7 +557,7 @@ func TestImport(t *testing.T) {
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	rootTestDir := filepath.Join("testdata", "imports")
 	in := filepath.Join(rootTestDir, "in", "startOk.txt")
-	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+	c := New(l, []string{"# yatt"}, Options{PreserveIndent: true})
 
 	rc, err := os.Open(in)
 	r.NoError(t, err)
@@ -584,7 +584,7 @@ func TestImport(t *testing.T) {
 func TestImportCycle(t *testing.T) {
 	t.Parallel()
 
-	prefixes := []string{"# fastplate"}
+	prefixes := []string{"# yatt"}
 
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	c := New(l, prefixes, Options{})
@@ -609,7 +609,7 @@ func TestIgnore(t *testing.T) {
 		_ = inFile.Close()
 	}()
 
-	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+	c := New(l, []string{"# yatt"}, Options{PreserveIndent: true})
 	buf := &bytes.Buffer{}
 	err = c.Interpret(InterpreterFile{
 		Name: inPath,
@@ -639,13 +639,13 @@ func TestInitLocalVariablesByFiles(t *testing.T) {
 		_ = inFile.Close()
 	}()
 
-	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+	c := New(l, []string{"# yatt"}, Options{PreserveIndent: true})
 	buf := &bytes.Buffer{}
 
 	vars := c.VarsLookupGlobal()
 	r.Exactly(t, 0, len(vars))
 
-	c.InitLocalVariablesByFiles(filepath.Join("testdata", "vars", "in", "fastplate.var"))
+	c.InitGlobalVariablesByFiles(filepath.Join("testdata", "vars", "in", "yatt.var"))
 	err = c.Interpret(InterpreterFile{
 		Name: inPath,
 		Buf:  buf,
@@ -669,7 +669,7 @@ func TestForeach(t *testing.T) {
 		_ = inFile.Close()
 	}()
 
-	c := New(l, []string{"# fastplate"}, Options{PreserveIndent: true})
+	c := New(l, []string{"# yatt"}, Options{PreserveIndent: true})
 	buf := &bytes.Buffer{}
 
 	err = c.Interpret(InterpreterFile{

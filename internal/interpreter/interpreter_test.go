@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	r "github.com/stretchr/testify/require"
-	"github.com/xiroxasx/fastplate/internal/interpreter/core"
+	"github.com/xiroxasx/yatt/internal/interpreter/core"
 )
 
 func TestFileInterpretation(t *testing.T) {
@@ -18,7 +18,7 @@ func TestFileInterpretation(t *testing.T) {
 	rootOutDir := filepath.Join(rootDir, "out")
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	ip := New(l, &Options{
-		VarFilePaths: []string{filepath.Join(rootInDir, "fastplate.var")},
+		VarFilePaths: []string{filepath.Join(rootInDir, "yatt.var")},
 		Indent:       true,
 		NoStats:      true,
 	})
@@ -51,7 +51,7 @@ func TestStart(t *testing.T) {
 	ip := New(l, &Options{
 		InPath:       filepath.Join(rootInDir, "rootfile.yaml"),
 		OutPath:      filepath.Join(rootOutDir, "rootfile.yaml"),
-		VarFilePaths: []string{filepath.Join(rootInDir, "fastplate.var")},
+		VarFilePaths: []string{filepath.Join(rootInDir, "yatt.var")},
 		Indent:       true,
 		NoStats:      true,
 	})
@@ -76,7 +76,7 @@ func TestStartDirMode(t *testing.T) {
 		InPath:        rootInDir,
 		OutPath:       rootOutDir,
 		FileBlacklist: []string{"raw-copy.yaml"},
-		VarFilePaths:  []string{filepath.Join(rootInDir, "fastplate.var")},
+		VarFilePaths:  []string{filepath.Join(rootInDir, "yatt.var")},
 		Indent:        true,
 		NoStats:       true,
 	})
@@ -94,7 +94,7 @@ func BenchmarkFileInterpretation(b *testing.B) {
 	rootDir := filepath.Join("testdata", "interpret", "in")
 	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	ip := New(l, &Options{
-		VarFilePaths: []string{filepath.Join(rootDir, "fastplate.var")},
+		VarFilePaths: []string{filepath.Join(rootDir, "yatt.var")},
 		Indent:       true,
 		NoStats:      true,
 	})
@@ -123,7 +123,7 @@ func BenchmarkFileWrites(b *testing.B) {
 	ip := New(l, &Options{
 		InPath:       filepath.Join(testDir, "in", "rootfile.yaml"),
 		OutPath:      filepath.Join(testDir, "out", "rootfile.yaml"),
-		VarFilePaths: []string{filepath.Join(testDir, "in", "fastplate.var")},
+		VarFilePaths: []string{filepath.Join(testDir, "in", "yatt.var")},
 		Indent:       true,
 		NoStats:      true,
 	})

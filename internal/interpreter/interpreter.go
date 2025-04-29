@@ -11,14 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/fastplate/internal/interpreter/core"
-)
-
-const (
-	templateStart = "{{"
-	templateEnd   = "}}"
-	prefixName    = "fastplate"
-	varFileName   = "fastplate.var"
+	"github.com/xiroxasx/yatt/internal/interpreter/core"
 )
 
 type Interpreter struct {
@@ -40,6 +33,8 @@ type Options struct {
 }
 
 func defaultPrefixTokens() []string {
+	const prefixName = "yatt"
+
 	return []string{
 		fmt.Sprintf("#%s", prefixName),
 		fmt.Sprintf("# %s", prefixName),
@@ -108,7 +103,7 @@ func (i *Interpreter) initScopedVars() {
 		vFiles[i] = filepath.Clean(vFile)
 	}
 
-	i.core.InitLocalVariablesByFiles(vFiles...)
+	i.core.InitGlobalVariablesByFiles(vFiles...)
 }
 
 func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {

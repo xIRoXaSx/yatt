@@ -9,14 +9,14 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
-	"github.com/xiroxasx/fastplate/internal/common"
-	"github.com/xiroxasx/fastplate/internal/interpreter/foreach"
+	"github.com/xiroxasx/yatt/internal/common"
+	"github.com/xiroxasx/yatt/internal/interpreter/foreach"
 )
 
 const (
 	preprocessorImportName = "import"
 
-	variableGlobalKey     = "FASTPLATE_GLOBAL"
+	variableGlobalKey     = "YATT_GLOBAL"
 	variableGlobalKeyFile = variableGlobalKey + "_"
 )
 

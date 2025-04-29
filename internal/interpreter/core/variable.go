@@ -6,7 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/common"
+)
+
+const (
+	variableRegistryGlobalRegister = "global"
 )
 
 type variable struct {
@@ -37,7 +41,7 @@ func (c *Core) VarLookupRecursive(fileName, name string, untilForeachIdx int) (_
 // Variable setter.
 //
 
-func (c *Core) InitLocalVariablesByFiles(varFileNames ...string) {
+func (c *Core) InitGlobalVariablesByFiles(varFileNames ...string) {
 	// Check if the global var files exist and read it into the memory.
 	for _, vf := range varFileNames {
 		cont, err := os.ReadFile(vf)
@@ -54,7 +58,7 @@ func (c *Core) InitLocalVariablesByFiles(varFileNames ...string) {
 
 			// Skip the var declaration keyword.
 			v := common.VarFromArg(bytes.Join(split[1:], []byte(" ")))
-			c.setGlobalVar(v)
+			c.setGlobalVarWithReg(vf, v)
 		}
 	}
 }
@@ -65,6 +69,10 @@ func (c *Core) setForeachVar(register string, newVar common.Variable) {
 
 func (c *Core) setGlobalVar(newVar common.Variable) {
 	setRegistryVar(&c.varRegistryGlobal, variableRegistryGlobalRegister, newVar)
+}
+
+func (c *Core) setGlobalVarWithReg(register string, newVar common.Variable) {
+	setRegistryVar(&c.varRegistryGlobal, register, newVar)
 }
 
 func (c *Core) setLocalVar(register string, newVar common.Variable) {
@@ -99,14 +107,34 @@ func (c *Core) varLookup(file, name string) (v common.Variable) {
 	}
 
 	v = c.varLookupLocal(file, name)
-	if v.Name() == "" {
-		v = c.varLookupGlobal(name)
+	if v.Name() != "" {
+		return
 	}
+
+	// TODO: unify with core.varsLookupGlobalFile()
+	v = c.varLookupGlobalWithRegister(file, name)
+	if v.Name() != "" {
+		return
+	}
+
+	v = c.varLookupGlobal(name)
 	return
 }
 
 func (c *Core) varLookupGlobal(name string) (v common.Variable) {
-	return varLookupRegistry(&c.varRegistryGlobal, variableRegistryGlobalRegister, name)
+	for k := range c.varRegistryGlobal.entries {
+		for _, v := range c.varRegistryGlobal.entries[k] {
+			if v.Name() == name {
+				return v
+			}
+		}
+	}
+
+	return variable{}
+}
+
+func (c *Core) varLookupGlobalWithRegister(register, name string) (v common.Variable) {
+	return varLookupRegistry(&c.varRegistryGlobal, register, name)
 }
 
 func (c *Core) varLookupLocal(register, name string) (v common.Variable) {

@@ -1,5 +1,5 @@
   Nested1: |
-    fastplate does also work with nested imports!
+    yatt does also work with nested imports!
 
   # Below is the nested yaml file.
-  # fastplate import ./testdata/interpret/in/partials/nested2.yaml
+  # yatt import ./testdata/interpret/in/partials/nested2.yaml

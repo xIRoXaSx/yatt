@@ -1,1 +1,1 @@
-# fastplate import testdata/deps/fileD.txt
+# yatt import testdata/deps/fileD.txt

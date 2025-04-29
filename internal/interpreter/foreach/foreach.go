@@ -3,7 +3,7 @@ package foreach
 import (
 	"sync"
 
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 // TokenResolver is an interface which is responsible for:

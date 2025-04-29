@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xiroxasx/fastplate/internal/common"
-	"github.com/xiroxasx/fastplate/internal/interpreter/functions"
+	"github.com/xiroxasx/yatt/internal/common"
+	"github.com/xiroxasx/yatt/internal/interpreter/functions"
 )
 
 const (
@@ -18,8 +18,8 @@ const (
 	functionNameCryptMD5    = "md5"
 
 	functionNameInternalEnv          = "env"
-	functionNameInternalFileBaseName = "fbasename"
-	functionNameInternalFileName     = "fname"
+	functionNameInternalFileBaseName = "basename"
+	functionNameInternalFileName     = "name"
 	functionNameInternalVar          = "var"
 
 	functionNameMathAdd   = "add"
@@ -129,7 +129,7 @@ func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]by
 		return functions.ToUpper(args)
 	case functionNameStringLength:
 		return functions.Length(args, len(c.varRegistryGlobal.entries), func(name string) int {
-			return len(c.varRegistryLocal.entries[strings.ToLower(name)])
+			return len(c.varRegistryGlobal.entries[strings.ToLower(name)])
 		})
 
 	default:

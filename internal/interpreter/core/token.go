@@ -5,7 +5,7 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 type resolveArgs struct {
@@ -147,7 +147,7 @@ func (c *Core) resolveToken(rArgs resolveArgs, token []byte) (ret []byte, err er
 	}
 
 	// Try to resolve function.
-	ret, err = c.resolveFunction(rArgs.fileName, token, rArgs.additionalVars, fnc, args)
+	ret, err = c.resolveFunction(rArgs.fileName, rArgs.additionalVars, fnc, args)
 	if err != nil {
 		return
 	}
@@ -174,7 +174,7 @@ func (c *Core) resolveVariable(fileName string, token []byte, additionalVars []c
 	return
 }
 
-func (c *Core) resolveFunction(fileName string, token []byte, additionalVars []common.Variable, fnc parserFunc, args [][]byte) (ret []byte, err error) {
+func (c *Core) resolveFunction(fileName string, additionalVars []common.Variable, fnc parserFunc, args [][]byte) (ret []byte, err error) {
 	fncName := fnc.string()
 
 	// Check function's args for variables.

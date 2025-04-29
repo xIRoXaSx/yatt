@@ -1,9 +1,5 @@
 package core
 
-const (
-	variableRegistryGlobalRegister = "global"
-)
-
 type ignoreState int
 
 func (i ignoreState) isActive() bool {

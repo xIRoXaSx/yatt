@@ -6,7 +6,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 func (b *Buffer) Evaluate(lineNum int, dst io.Writer, tr TokenResolver) (err error) {
