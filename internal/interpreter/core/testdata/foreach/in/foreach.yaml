@@ -2,6 +2,5 @@
 # fastplate var test2 = 2
 # fastplate var test3 = 3
 # fastplate foreach [ test1, test2, test3 ]
-{{var(test4, {{mult(index, value}})}}
-{{index}} * {{value}} = {{test4}}
+{{var(test4, {{mult(index, {{mult(index, value)}})}})}}{{index}} * ({{index}} * {{value}}) = {{test4}}
 # fastplate foreachend

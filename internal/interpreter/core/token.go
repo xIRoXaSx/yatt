@@ -85,62 +85,81 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 	return
 }
 
-func (c *Core) resolve(rArgs resolveArgs) (ret []byte, err error) {
-	ret = rArgs.line
+func (c *Core) resolve(rArgs resolveArgs) (_ []byte, err error) {
 	partials := bytes.Split(rArgs.line, templateStartBytes)
 	if len(partials) == 1 {
 		// Nothing needs to be resolved.
-		return
+		return rArgs.line, nil
 	}
-	for _, partial := range partials {
-		tokens := bytes.Split(partial, templateEndBytes)
+
+	ret := partials[0]
+
+	var (
+		bufIdx = -1
+		buf    = make([][]byte, 0)
+	)
+	for _, part := range partials[1:] {
+		tokens := bytes.Split(part, templateEndBytes)
+
 		if len(tokens) == 1 {
+			buf = append(buf, []byte(tokens[0]))
+			bufIdx++
 			continue
 		}
 
-		// Resolve functions and variables.
-		// If no matched variable is found, try to find an global var.
-		for _, token := range tokens {
-			if len(token) == 0 {
-				continue
-			}
-
-			fnc, args := unwrapFunc(token)
-			if len(fnc) == 0 {
-				// No function found, try to lookup and replace variable.
-				ret = c.resolveVariable(rArgs.fileName, ret, token, rArgs.additionalVars)
-				continue
-			}
-
-			// Try to resolve function.
-			ret, err = c.resolveFunction(rArgs.fileName, ret, token, rArgs.additionalVars, fnc, args)
-			if err != nil {
-				return
-			}
-		}
-	}
-
-	if len(bytes.Split(ret, templateStartBytes)) > 1 && !bytes.Equal(ret, rArgs.line) {
-		ret, err = c.resolve(resolveArgs{
-			fileName:       rArgs.fileName,
-			line:           ret,
-			additionalVars: rArgs.additionalVars,
-		})
+		var res []byte
+		res, err = c.resolveToken(rArgs, tokens[0])
 		if err != nil {
 			return
 		}
+
+		// If variables variables are used without functions,
+		// we can add them directly and continue.
+		if len(tokens) == 2 {
+			ret = append(ret, append(res, tokens[len(tokens)-1]...)...)
+			continue
+		}
+
+		var rev []byte
+		for j, t := range tokens[1 : len(tokens)-1] {
+			newToken := append(buf[bufIdx-j], append(res, t...)...)
+			res, err = c.resolveToken(rArgs, newToken)
+			if err != nil {
+				return
+			}
+			rev = res
+			buf[bufIdx-j] = append(buf[bufIdx-j], res...)
+		}
+
+		ret = append(ret, append(rev, tokens[len(tokens)-1]...)...)
 	}
 
+	return ret, err
+}
+
+func (c *Core) resolveToken(rArgs resolveArgs, token []byte) (ret []byte, err error) {
+	ret = token
+	fnc, args := unwrapFunc(token)
+	if len(fnc) == 0 {
+		// No function found, try to lookup and replace variable.
+		ret = c.resolveVariable(rArgs.fileName, token, rArgs.additionalVars)
+		return
+	}
+
+	// Try to resolve function.
+	ret, err = c.resolveFunction(rArgs.fileName, token, rArgs.additionalVars, fnc, args)
+	if err != nil {
+		return
+	}
 	return
 }
 
-func (c *Core) resolveVariable(fileName string, line, token []byte, additionalVars []common.Variable) (ret []byte) {
+func (c *Core) resolveVariable(fileName string, token []byte, additionalVars []common.Variable) (ret []byte) {
 	// No function found, try to lookup and replace variable.
-	ret = line
 	tokenString := string(token)
 	v := c.varLookup(fileName, tokenString)
 	if v.Value() != "" {
-		return replaceVar(ret, token, []byte(v.Value()))
+		return []byte(v.Value())
 	}
 
 	for _, av := range additionalVars {
@@ -150,13 +169,12 @@ func (c *Core) resolveVariable(fileName string, line, token []byte, additionalVa
 		}
 	}
 	if v.Name() == tokenString {
-		ret = replaceVar(ret, token, []byte(v.Value()))
+		ret = []byte(v.Value())
 	}
 	return
 }
 
-func (c *Core) resolveFunction(fileName string, line, token []byte, additionalVars []common.Variable, fnc parserFunc, args [][]byte) (ret []byte, err error) {
-	ret = line
+func (c *Core) resolveFunction(fileName string, token []byte, additionalVars []common.Variable, fnc parserFunc, args [][]byte) (ret []byte, err error) {
 	fncName := fnc.string()
 
 	// Check function's args for variables.
@@ -185,7 +203,7 @@ func (c *Core) resolveFunction(fileName string, line, token []byte, additionalVa
 	if err != nil {
 		return
 	}
-	ret = replaceVar(ret, token, mod)
+	ret = mod
 	return
 }
 

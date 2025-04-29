@@ -179,11 +179,6 @@ func (c *Core) interpret(file InterpreterFile, additionalIndent []byte) (err err
 // Helper functions.
 //
 
-func replaceVar(line, varName, replacement []byte) []byte {
-	matched := bytes.Join([][]byte{templateStartBytes, varName, templateEndBytes}, nil)
-	return bytes.ReplaceAll(line, matched, replacement)
-}
-
 func remapArgsWithVariables(fncNameStr string, varsFromArgs, additionalVars []common.Variable) (values [][]byte, err error) {
 	values = make([][]byte, len(varsFromArgs))
 

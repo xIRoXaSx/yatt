@@ -545,10 +545,10 @@ func TestResolveNested(t *testing.T) {
 	c := New(l, nil, Options{})
 	ret, err := c.resolve(resolveArgs{
 		fileName: "test.txt",
-		line:     []byte("test 123 {{add(1,2,{{mult(2,3)}})}}"),
+		line:     []byte("testing two nested functions: {{add(1,2,{{mult(2,{{add(3,3)}})}})}} and {{add(2,3,{{mult(4,{{add(5,6)}})}})}}"),
 	})
 	r.NoError(t, err)
-	r.Exactly(t, string(ret), "test 123 9")
+	r.Exactly(t, "testing two nested functions: 15 and 49", string(ret))
 }
 
 func TestImport(t *testing.T) {
@@ -678,7 +678,7 @@ func TestForeach(t *testing.T) {
 		RC:   inFile,
 	})
 	r.NoError(t, err)
-	r.Exactly(t, "\n0 * 1 = 0\n\n1 * 2 = 2\n\n2 * 3 = 6\n", buf.String())
+	r.Exactly(t, "0 * (0 * 1) = 0\n1 * (1 * 2) = 2\n2 * (2 * 3) = 12\n", buf.String())
 }
 
 //
