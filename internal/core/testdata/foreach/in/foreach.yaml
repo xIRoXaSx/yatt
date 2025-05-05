@@ -1,0 +1,6 @@
+# yatt var test1 = 1
+# yatt var test2 = 2
+# yatt var test3 = 3
+# yatt foreach [ test1, test2, test3 ]
+{{var(test4, {{mult(index, {{mult(index, value)}})}})}}{{index}} * ({{index}} * {{value}}) = {{test4}}
+# yatt foreachend

@@ -1,0 +1,3 @@
+Hello from startOk.txt!
+    # yatt import ./testdata/imports/in/myTestImportOk.txt
+End of startOk.txt

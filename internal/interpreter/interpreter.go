@@ -2,231 +2,112 @@ package interpreter
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
-	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/fastplate/internal/common"
+	"github.com/xiroxasx/yatt/internal/core"
 )
 
-const varFileName = "fastplate.var"
-
 type Interpreter struct {
-	opts       *Options
-	prefixes   []string
-	state      state
-	lineEnding []byte
+	l    zerolog.Logger
+	core *core.Core
+
+	opts *Options
 }
 
 type Options struct {
 	InPath        string
 	OutPath       string
-	FileWhitelist MultiString
-	FileBlacklist MultiString
-	VarFilePaths  MultiString
+	FileWhitelist []string
+	FileBlacklist []string
+	VarFilePaths  []string
 	Indent        bool
-	UseCRLF       bool
 	NoStats       bool
 	Verbose       bool
 }
 
-type MultiString []string
+func defaultPrefixTokens() []string {
+	const prefixName = "yatt"
 
-func (vp *MultiString) String() string {
-	return strings.Join(*vp, " ")
+	return []string{
+		fmt.Sprintf("#%s", prefixName),
+		fmt.Sprintf("# %s", prefixName),
+		fmt.Sprintf("//%s", prefixName),
+		fmt.Sprintf("// %s", prefixName),
+	}
 }
 
-func (vp *MultiString) Set(v string) (err error) {
-	*vp = append(*vp, v)
-	return
-}
-
-type indexer struct {
-	start int
-	len   int
-	mx    *sync.Mutex
-}
-
-type scopedRegistry struct {
-	scopedVars map[string][]common.Var
-	*sync.Mutex
-}
-
-type state struct {
-	ignoreIndex        map[string]int8
-	scopedRegistry     scopedRegistry
-	dependencies       map[string][]string
-	unscopedVarIndexes map[string]indexer
-	unscopedVars       []common.Var
-	foreach            sync.Map
-	dirMode            bool
-	buf                *bytes.Buffer
-	*sync.Mutex
-}
-
-func defaultImportPrefixes() []string {
-	return []string{"#fastplate", "# fastplate", "//fastplate", "// fastplate"}
-}
-
-func New(opts *Options) (i *Interpreter) {
+func New(l zerolog.Logger, opts *Options) (i *Interpreter) {
 	i = &Interpreter{
-		opts:       opts,
-		prefixes:   defaultImportPrefixes(),
-		lineEnding: []byte("\n"),
-		state: state{
-			ignoreIndex: map[string]int8{},
-			scopedRegistry: scopedRegistry{
-				scopedVars: map[string][]common.Var{},
-				Mutex:      &sync.Mutex{},
-			},
-			dependencies:       map[string][]string{},
-			unscopedVarIndexes: map[string]indexer{},
-			foreach:            sync.Map{},
-			buf:                &bytes.Buffer{},
-			Mutex:              &sync.Mutex{},
-		},
+		opts: opts,
+		l:    l,
+		core: core.New(l, defaultPrefixTokens(), core.Options{
+			PreserveIndent: opts.Indent,
+		}),
 	}
 
-	if opts.UseCRLF {
-		i.lineEnding = []byte("\r\n")
-	}
-
-	// Look in the current working directory.
-	vFiles := opts.VarFilePaths
-	if len(vFiles) == 0 {
-		_, err := os.Stat(varFileName)
-		if err == nil {
-			vFiles = []string{varFileName}
-		}
-	}
-
-	// Check if the global var files exist and read it into the memory.
-	for _, vf := range vFiles {
-		_, err := os.Stat(vf)
-		if err != nil {
-			return
-		}
-		cont, err := os.ReadFile(vf)
-		if err != nil {
-			log.Fatal().Err(err).Str("path", vf).Msg("unable to read global variable file")
-		}
-		lines := bytes.Split(cont, i.lineEnding)
-		for _, l := range lines {
-			split := bytes.Split(i.CutPrefix(l), []byte{' '})
-			if string(split[0]) != commandVar {
-				continue
-			}
-			// Skip the var declaration keyword.
-			i.setUnscopedVar(strings.TrimSuffix(filepath.Base(vf), filepath.Ext(vf)), split[1:])
-		}
-	}
+	i.initScopedVars()
 	return
-}
-
-func (i *Interpreter) TrimLine(b, prefix []byte) []byte {
-	return bytes.Trim(bytes.TrimPrefix(b, prefix), string(i.lineEnding)+" ")
-}
-
-func (i *Interpreter) CutPrefix(b []byte) (ret []byte) {
-	prefix := i.matchedImportPrefix(b)
-	if prefix == nil {
-		return
-	}
-	return i.TrimLine(b, prefix)
 }
 
 func (i *Interpreter) Start() (err error) {
+	i.opts.InPath = filepath.Clean(i.opts.InPath)
+
 	stat, err := os.Stat(i.opts.InPath)
 	if err != nil {
-		log.Fatal().Err(err).Msg("unable to stat input path")
+		i.l.Fatal().Err(err).Msg("unable to stat input path")
 	}
 
 	start := time.Now()
-	i.state.dirMode = stat.IsDir()
-	if i.state.dirMode {
-		err = i.runDirMode()
-	} else {
-		err = i.runFileMode()
-	}
-	el := time.Since(start)
-	if err != nil {
+	defer func() {
+		if err != nil {
+			return
+		}
+
+		elapsed := time.Since(start)
+		if !i.opts.NoStats {
+			i.l.Info().Dur("elapsed", elapsed).Msg("finished")
+		}
+	}()
+
+	if stat.IsDir() {
+		i.opts.OutPath = filepath.Clean(i.opts.OutPath)
+		err = os.MkdirAll(i.opts.OutPath, 0o755)
+		if err != nil {
+			return
+		}
+
+		err = i.runDirMode(i.opts.InPath, i.opts.OutPath)
 		return
 	}
 
-	if !i.opts.NoStats {
-		fmt.Println("Execution took", el)
-	}
-	return
-}
-
-// runDirMode runs the import for each file inside the Options.InPath.
-func (i *Interpreter) runDirMode() (err error) {
-	const dirPerm = os.FileMode(0700)
-
-	err = os.MkdirAll(i.opts.OutPath, dirPerm)
+	outDir := filepath.Dir(filepath.Clean(i.opts.OutPath))
+	err = os.MkdirAll(outDir, 0o755)
 	if err != nil {
 		return
 	}
-
-	err = filepath.WalkDir(i.opts.InPath, func(inPath string, d os.DirEntry, err error) error {
-		dest := strings.ReplaceAll(inPath, i.opts.InPath, i.opts.OutPath)
-		if d.IsDir() {
-			if dest == "" {
-				return nil
-			}
-			err = os.MkdirAll(dest, dirPerm)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		out, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			cErr := out.Close()
-			if err == nil {
-				err = cErr
-			}
-		}()
-
-		isRaw, err := i.rawCopyOnListMatch(inPath, out)
-		if err != nil {
-			return err
-		}
-		if isRaw {
-			return nil
-		}
-
-		// Write to the buffer to ensure that files don't get partially written.
-		err = i.interpretFile(inPath, nil)
-		if err != nil {
-			return err
-		}
-
-		// Write buffer to the file and cut last new line.
-		_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
-		if err != nil {
-			return err
-		}
-		i.state.buf.Reset()
-		return err
-	})
+	err = i.runFileMode(i.opts.InPath, i.opts.OutPath)
 	return
 }
 
-// runFileMode runs the import with the targeted Options.OutPath.
-func (i *Interpreter) runFileMode() (err error) {
-	out, err := os.OpenFile(i.opts.OutPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
+func (i *Interpreter) initScopedVars() {
+	// Cleanup filepaths.
+	vFiles := i.opts.VarFilePaths
+	for i, vFile := range vFiles {
+		vFiles[i] = filepath.Clean(vFile)
+	}
+
+	i.core.InitGlobalVariablesByFiles(vFiles...)
+}
+
+func (i *Interpreter) writeInterpretedFile(inPath, outPath string) (err error) {
+	out, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
 		return err
 	}
@@ -237,120 +118,43 @@ func (i *Interpreter) runFileMode() (err error) {
 		}
 	}()
 
+	// Copy file contents if the current file is matching the filters,
+	// we don't need to interpret them.
+	isRaw, err := i.rawCopyOnListMatch(inPath, out)
+	if err != nil {
+		return err
+	}
+	if isRaw {
+		return nil
+	}
+
+	// Open the input file.
+	// The interpret method will close it afterwards.
+	inFile, err := os.Open(inPath)
+	if err != nil {
+		return
+	}
+
+	buf := &bytes.Buffer{}
+	interFile := core.InterpreterFile{
+		Name: inPath,
+		RC:   inFile,
+		Buf:  buf,
+	}
 	// Write to the buffer to ensure that files don't get partially written.
-	err = i.interpretFile(i.opts.InPath, nil)
+	err = i.core.Interpret(interFile)
 	if err != nil {
 		return
 	}
 
-	// Write buffer to the file and cut last new line.
-	_, err = out.Write(i.state.buf.Bytes()[:i.state.buf.Len()-1])
-	return
-}
-
-func (i *Interpreter) interpretFile(file string, indent []byte) (err error) {
-	cont, err := os.ReadFile(file)
-	if err != nil {
-		log.Warn().Err(err).Str("file", file).Msg("unable to read file")
-		return
-	}
-
-	// Append indention to all linebreaks, prepend to the first line.
-	cutSet := i.lineEnding
-	if len(indent) > 0 {
-		cont = bytes.ReplaceAll(cont, cutSet, append(cutSet, indent...))
-		cont = append(indent, cont...)
-	}
-
-	lines := bytes.Split(cont, cutSet)
-	for lineNum, l := range lines {
-		lineNum++
-		if i.opts.Indent {
-			indent = leadingIndents(l)
-		}
-
-		callID := fmt.Sprintf("%s:%d", file, lineNum)
-
-		// Skip the indents.
-		linePart := l[len(indent):]
-		prefix := i.matchedImportPrefix(linePart)
-		if prefix == nil {
-			// Line does not contain one of the required prefixes.
-			if i.state.ignoreIndex[file] == 1 {
-				// Still in an ignore block.
-				continue
-			}
-
-			var fe foreach
-			fe, err = i.state.foreachLoad(file)
-			if err != nil && err != errMapLoadForeach {
-				return
-			}
-
-			if err == nil && fe.buf.v != nil && fe.c.p >= 0 && len(fe.buf.v[fe.c.p].variables) > 0 {
-				// Currently moving inside a foreach loop.
-				err = i.appendForeachLine(file, l)
-				if err != nil {
-					return
-				}
-				continue
-			}
-
-			var ret []byte
-			ret, err = i.resolve(file, l, nil)
-			if err != nil {
-				return
-			}
-			_, err = i.state.buf.Write(append(ret, cutSet...))
-			if err != nil {
-				return
-			}
-		} else {
-			// Trim statement and check against internal commands.
-			statement := i.TrimLine(linePart, prefix)
-			split := bytes.Split(statement, []byte{' '})
-			if len(split) > 0 && string(split[0]) != commandImport {
-				err = i.executeCommand(string(split[0]), file, split[1:], lineNum, callID)
-				if err != nil {
-					return
-				}
-				continue
-			}
-
-			if len(split) < 2 {
-				err = errors.New("no import path given")
-				return
-			}
-			s := filepath.Clean(string(split[1]))
-			file = filepath.Clean(file)
-			if i.state.hasCyclicDependency(file, s) {
-				err = fmt.Errorf("detected import cycle: %s -> %s", file, s)
-				return
-			}
-			i.state.addDependency(file, s)
-			err = i.interpretFile(s, indent)
-			if err != nil {
-				return err
-			}
-		}
+	if buf.Len() > 0 {
+		// Write buffer to the file and cut last new line.
+		_, err = out.Write(buf.Bytes()[:buf.Len()-1])
 	}
 	return
-}
-
-func (i *Interpreter) matchedImportPrefix(line []byte) []byte {
-	for _, pref := range i.prefixes {
-		if bytes.HasPrefix(line, []byte(pref)) {
-			return []byte(pref)
-		}
-	}
-	return nil
 }
 
 func (i *Interpreter) rawCopyOnListMatch(inPath string, out io.Writer) (isRaw bool, err error) {
-	if i.opts == nil {
-		return
-	}
-
 	writeTo := func(inPath string, out io.Writer) (err error) {
 		var b []byte
 		b, err = os.ReadFile(inPath)
@@ -373,7 +177,7 @@ func (i *Interpreter) rawCopyOnListMatch(inPath string, out io.Writer) (isRaw bo
 		return
 	}
 
-	if i.matchedWhitelist(inPath) {
+	if len(i.opts.FileWhitelist) == 0 || i.matchedWhitelist(inPath) {
 		return
 	}
 
@@ -412,15 +216,5 @@ func (i *Interpreter) matchedWhitelist(v string) (matched bool) {
 		}
 	}
 
-	return
-}
-
-func leadingIndents(line []byte) (s []byte) {
-	for _, r := range line {
-		if r != ' ' && r != '\t' {
-			break
-		}
-		s = append(s, r)
-	}
 	return
 }

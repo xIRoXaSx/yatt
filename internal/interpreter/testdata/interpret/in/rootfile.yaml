@@ -1,0 +1,78 @@
+# This is an example file which gives you a hint on how features might be used.
+Template:
+  Preprocessors:
+    # Imports are a great way to split files into multiple or reuse parts of it.
+    Imports:
+      # Import file contents:
+      # yatt import ./testdata/interpret/in/partials/description.yaml
+
+      # If enabled, indentation in front of an import statement will be applied to the whole imported section.
+      # The content of the imported file will automatically have the prepended spaces / tabs.
+      # This works with any amount of spaces / tabs.
+      Indention:
+        # yatt import ./testdata/interpret/in/partials/indention.yaml
+
+      # Nested imports allow for more flexibility.
+      # In this example, the correct YAML indention comes directly from inside the imported file(s).
+      NestedImports:
+      # yatt import ./testdata/interpret/in/partials/nested.yaml
+
+    # Ignore statements can help you to keep your output files free from unnecessary lines.
+    # Whether that might be an internal comment, a whole section of a file or whatever your case might be.
+    Ignores: Are pretty handy!
+    # yatt ignore
+    #   These two lines will not show up in the output file.
+    #   This also allows for template specific documentation.
+    # yatt ignoreend
+
+    # By declaring variables and using the corresponding foreach syntax, you can create a for(-each) loop.
+    # Using a single integer value, foreach is treated as a for loop (0-n).
+    # Using multiple value, foreach is treated as a for each loop.
+    # You might also want to retrieve the index or value of the loop.
+    # This can be achieved by the special variables {{index}} and {{value}} correspondingly.
+    # When loops are nested, you might want to retrieve the values from the outer layers by creating additional variables.
+    # Opening and closing brackets are optional.
+    Foreach: |
+      # yatt var var1 = var 1
+      # yatt var var2 = var 2
+      # yatt var var3 = var 3
+      # yatt foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
+        loop=0, iteration={{index}}, value={{value}}{{var(l0, {{value}})}}
+        # yatt foreach [ {{var1}}, {{var2}} ]
+          loop=1, iteration={{index}}, value={{value}}{{var(l1, {{value}})}}
+          # yatt foreach [ {{var1}}, {{var2}}, {{var3}}, {{global_threshold}} ]
+            loop=2, iteration={{index}}, value={{value}}{{var(l2, {{value}})}}
+          # yatt foreachend
+          # yatt foreach [ {{var1}}, {{var2}} ]
+            loop=3, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}{{var(l3, {{value}})}}
+          # yatt foreachend
+          loop=1 {{l5}}, {{l3}} and {{l2}} are out of scope!
+          loop=1 l1 and l0 are still in tact and can be used: l0:{{upper(l0)}}, l1:{{upper(l1)}}
+          # yatt foreach [ {{var1}}, {{var2}} ]
+            loop=4, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}
+            # yatt foreach [ {{var1}}, {{var2}} ]
+              loop=5, iteration={{index}}, value={{value}}, l0={{l0}}, l1={{l1}}{{var(l5, {{value}})}}
+            # yatt foreachend
+          # yatt foreachend
+        # yatt foreachend
+      # yatt foreachend
+
+  # By declaring global or local variables in the syntax down below, you can reuse values.
+  # You can either declare variables in your template file directly or use another file to feed it via the CLI flag.
+  # Using the latter declares global variables that can be used form any files that gets interpreted.
+  Variables:
+    # Declaring a variable via preprocessor:
+    #   # yatt var test = 1
+    # Declaring an inline variable via function: {{ var(test, 1) }}
+    # Using the syntax:
+    #   This is a text which includes our handy test variable which holds the value of '{{test}}'.
+    #
+    # The root file now has a variable declared called "test".
+    # This specific variable is out of scope in the imported file.
+    # However you might want to use a global variable like "global_threshold" instead!
+    # yatt import ./testdata/interpret/in/partials/varscopes.yaml
+
+  # Functions can be called by surrounding them with braces, just like variables.
+  # Variables provided to the function calls do not need to be surrounded by braces.
+  Functions:
+    # yatt import ./testdata/interpret/in/partials/functions.yaml

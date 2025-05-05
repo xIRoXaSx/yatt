@@ -1,0 +1,3 @@
+# yatt import testdata/deps/fileC.txt
+# yatt import testdata/deps/fileF.txt
+# yatt import testdata/deps/fileG.txt

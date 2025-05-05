@@ -1,30 +1,58 @@
-# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
-#      _____                 __         .__          __
-#    _/ ____\____    _______/  |_______ |  | _____ _/  |_  ____
-#    \   __\\__  \  /  ___/\   __\____ \|  | \__  \\   __\/ __ \
-#    |  |   / __ \_\___ \  |  | |  |_> >  |__/ __ \|  | \  ___/
-#    |__|  (____  /____  > |__| |   __/|____(____  /__|  \___  >
-#               \/     \/       |__|             \/          \/
-# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
+# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
+# _____.___.  ___________________________
+# \__  |   | /  _  \__    ___/\__    ___/
+#  /   |   |/  /_\  \|    |     |    |
+#  \____   /    |    \    |     |    |
+#  / ______\____|__  /____|     |____|
+#  \/              \/
+# =~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
 #
 # > What is this file used for?
 #    This file is designed to run with grml to simplify various tasks.
-#    Head over to https://github.com/desertbit/grml, get / compile and setup grml.
+#    Head over to https://github.com/ILizardNetwork/grml, get / compile and setup grml.
 #    Afterwards you can use these tasks.
 version: 3
-project: fastplate
+project: yatt
 
 env:
-    VERSION:  v1.1.5
-    BIN_NAME: fastplate
-    PKG_DIR: internal/interpreter
+    VERSION:  v2.0.0
+    BIN_NAME: yatt
+
+    # Docker env vars.
     DOCKER_DIR: ${ROOT}/docker
+    DOCKER_IMG_TAG_BUILD: golang:1.23.5-bookworm
+    DOCKER_IMG_TAG: yatt:latest
+
+    # Golang env vars.
+    GOOS:   linux
+    GOARCH: amd64
 
 interpreter: sh
 import:
-    - docker/build.sh
+    - ./script/docker.sh
 
 commands:
+    build:
+        help: build the project locally
+        exec: |
+            mkdir -p bin
+            CGO_ENABLED=0 go build -o="bin/${BIN_NAME}-${VERSION}" .
+        commands:
+            docker:
+                help: build the docker image
+                exec: |
+                    build_docker
+
+            release:
+                help: build via docker multi arch container
+                exec: |
+                    run_docker_build_release
+
+    test:
+        help: run the go tests
+        exec:
+            run_tests
+
     bench:
         help: run benchmarks
         deps:
@@ -34,57 +62,17 @@ commands:
             interpreter:
                 help: benchmark the file interpretation
                 exec: |
-                    cd "${PKG_DIR}"
+                    cd "${ROOT}/internal/interpreter"
                     go test \
                         -test.benchmem \
                         -test.bench="^\QBenchmarkFileInterpretation\E$" \
-                        -run=^$github.com/xiroxasx/fastplate/interpreter
+                        -run=^$github.com/xiroxasx/yatt
 
             writer:
                 help: benchmark the file interpretation with corresponding outputs
                 exec: |
-                    cd "${PKG_DIR}"
+                    cd "${ROOT}/internal/interpreter"
                     go test \
                         -benchmem \
                         -bench="^\QBenchmarkFileWrites\E$" \
-                        -run=^$github.com/xiroxasx/fastplate/interpreter
-
-    test:
-        help: run all tests
-        exec: |
-            cd "${PKG_DIR}"
-            go test ./
-
-    build:
-        help: build the project locally
-        exec: |
-            mkdir -p bin
-            CGO_ENABLED=0 go build -o="bin/${BIN_NAME}-v${VERSION}" .
-        commands:
-            run:
-                help: run the binary
-                deps:
-                    - build
-                    - run
-
-            docker:
-                help: build the docker image
-                exec: |
-                    cd "${DOCKER_DIR}"
-                    build_docker
-
-            multi_arch:
-                help: build via docker multi arch container
-                exec: |
-                    run_docker_multi_arch_build
-
-    run:
-        help: run the binary with the testdata as input
-        exec: |
-            cd "${PKG_DIR}"
-            mkdir -p "testdata/dest"
-            ${ROOT}/bin/${BIN_NAME}-v${VERSION} \
-                -in="testdata/src/" \
-                -out="testdata/dest/" \
-                -var="testdata/fastplate.var" \
-                -indent
+                        -run=^$github.com/xiroxasx/yatt
