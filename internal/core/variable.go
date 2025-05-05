@@ -111,7 +111,6 @@ func (c *Core) varLookup(file, name string) (v common.Variable) {
 		return
 	}
 
-	// TODO: unify with core.varsLookupGlobalFile()
 	v = c.varLookupGlobalWithRegister(file, name)
 	if v.Name() != "" {
 		return
@@ -141,13 +140,11 @@ func (c *Core) varLookupLocal(register, name string) (v common.Variable) {
 	return varLookupRegistry(&c.varRegistryLocal, register, name)
 }
 
-// TODO: Partials (e.g.: ", value=") are used to lookup variables,
-// filter them out in the caller function.
 func (c *Core) varLookupForeach(stateIdx int, name string) (_ common.Variable) {
 	// Allowed to traverse from parent loops but limit to the current state index.
 	idxs := c.feb.ReverseLoopOrder(stateIdx)
 	idxs = append([]int{stateIdx}, idxs...)
-	for i := 0; i < len(idxs); i++ {
+	for i := range idxs {
 		idx := idxs[i]
 		reg := strconv.Itoa(idx)
 		vars := c.varRegistryForeach.entries[reg]

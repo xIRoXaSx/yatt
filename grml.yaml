@@ -62,7 +62,7 @@ commands:
             interpreter:
                 help: benchmark the file interpretation
                 exec: |
-                    cd "${ROOT}/internal"
+                    cd "${ROOT}/internal/interpreter"
                     go test \
                         -test.benchmem \
                         -test.bench="^\QBenchmarkFileInterpretation\E$" \
@@ -71,7 +71,7 @@ commands:
             writer:
                 help: benchmark the file interpretation with corresponding outputs
                 exec: |
-                    cd "${ROOT}/internal"
+                    cd "${ROOT}/internal/interpreter"
                     go test \
                         -benchmem \
                         -bench="^\QBenchmarkFileWrites\E$" \
