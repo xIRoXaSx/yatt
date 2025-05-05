@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/xiroxasx/yatt/internal/common"
-	"github.com/xiroxasx/yatt/internal/interpreter/functions"
+	"github.com/xiroxasx/yatt/internal/functions"
 )
 
 const (

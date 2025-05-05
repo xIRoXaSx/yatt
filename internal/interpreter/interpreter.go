@@ -11,7 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/xiroxasx/yatt/internal/interpreter/core"
+	"github.com/xiroxasx/yatt/internal/core"
 )
 
 type Interpreter struct {

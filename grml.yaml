@@ -38,37 +38,20 @@ commands:
             mkdir -p bin
             CGO_ENABLED=0 go build -o="bin/${BIN_NAME}-${VERSION}" .
         commands:
-            run:
-                help: run the binary
-                deps:
-                    - build
-                    - run
-
             docker:
                 help: build the docker image
                 exec: |
                     build_docker
 
-            multi_arch:
+            release:
                 help: build via docker multi arch container
                 exec: |
-                    run_docker_multi_arch_build
-
-    run:
-        help: run the binary with the testdata as input
-        exec: |
-            cd "${ROOT}/internal/interpreter/"
-            mkdir -p "interpret/out"
-            TEST=test ${ROOT}/bin/${BIN_NAME}-${VERSION} \
-                -in="testdata/interpret/in/rootfile.yaml" \
-                -var="testdata/interpret/in/yatt.var" \
-                -out="testdata/interpret/out/rootfile.yaml" \
-                -indent
+                    run_docker_build_release
 
     test:
         help: run the go tests
         exec:
-            run_docker_test
+            run_tests
 
     bench:
         help: run benchmarks
@@ -79,17 +62,17 @@ commands:
             interpreter:
                 help: benchmark the file interpretation
                 exec: |
-                    cd "${ROOT}/internal/interpreter"
+                    cd "${ROOT}/internal"
                     go test \
                         -test.benchmem \
                         -test.bench="^\QBenchmarkFileInterpretation\E$" \
-                        -run=^$github.com/xiroxasx/yatt/interpreter
+                        -run=^$github.com/xiroxasx/yatt
 
             writer:
                 help: benchmark the file interpretation with corresponding outputs
                 exec: |
-                    cd "${ROOT}/internal/interpreter"
+                    cd "${ROOT}/internal"
                     go test \
                         -benchmem \
                         -bench="^\QBenchmarkFileWrites\E$" \
-                        -run=^$github.com/xiroxasx/yatt/interpreter
+                        -run=^$github.com/xiroxasx/yatt

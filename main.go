@@ -75,10 +75,11 @@ func main() {
 	opts.InPath = filepath.Clean(opts.InPath)
 	opts.OutPath = filepath.Clean(opts.OutPath)
 
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	logLvl := zerolog.InfoLevel
 	if opts.Verbose {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		logLvl = zerolog.DebugLevel
 	}
+	zerolog.SetGlobalLevel(logLvl)
 
 	ip := interpreter.New(l, &opts)
 	err := ip.Start()

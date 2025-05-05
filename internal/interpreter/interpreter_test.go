@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	r "github.com/stretchr/testify/require"
-	"github.com/xiroxasx/yatt/internal/interpreter/core"
+	"github.com/xiroxasx/yatt/internal/core"
 )
 
 func TestFileInterpretation(t *testing.T) {

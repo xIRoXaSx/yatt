@@ -3,7 +3,7 @@ COPY ../ /work
 ARG GOOS
 ARG GOARCH
 RUN apk update \
-    && apk add --no-cache go \
+    && apk add go \
     && mkdir /data \
     && cd /work \
     && CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -ldflags "-w -extldflags '-static'" -o "/data/yatt"

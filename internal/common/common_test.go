@@ -83,3 +83,17 @@ func TestVariableFromArg(t *testing.T) {
 		r.Exactly(t, tc.expectedValue, v.Value(), "names do not match: case=%d, expected=%s, actual=%s", i, tc.expectedValue, v.Value())
 	}
 }
+
+func TestGetLeadingWhitespaceSpaces(t *testing.T) {
+	t.Parallel()
+
+	s := GetLeadingWhitespace([]byte("   test"))
+	r.Exactly(t, []byte("   "), s)
+}
+
+func TestGetLeadingWhitespaceTabs(t *testing.T) {
+	t.Parallel()
+
+	s := GetLeadingWhitespace([]byte("\t\ttest"))
+	r.Exactly(t, []byte("\t\t"), s)
+}

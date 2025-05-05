@@ -10,7 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/xiroxasx/yatt/internal/common"
-	"github.com/xiroxasx/yatt/internal/interpreter/foreach"
+	"github.com/xiroxasx/yatt/internal/foreach"
 )
 
 const (

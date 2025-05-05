@@ -1,4 +1,5 @@
 #!/bin/bash
+
 build_docker() {
     docker build "${ROOT}" \
         --file ./docker/dockerfile \
@@ -7,7 +8,7 @@ build_docker() {
         --build-arg="GOARCH=${GOARCH}"
 }
 
-run_docker_multi_arch_build() {
+run_docker_build_release() {
     docker run --rm -it \
         -e="VERSION=${VERSION}" \
         --workdir="/work" \
@@ -15,10 +16,10 @@ run_docker_multi_arch_build() {
         -v="$PWD:/data:ro" \
         -v="$PWD/bin:/build" \
             "${DOCKER_IMG_TAG_BUILD}" \
-            -c /data/docker/multi_arch_build.sh
+            -c /data/docker/build-release.sh
 }
 
-run_docker_test() {
+run_tests() {
     docker run --rm -it \
         --workdir="/work" \
         --tmpfs="/work/internal/interpreter/testdata/interpret/out" \
@@ -27,5 +28,5 @@ run_docker_test() {
             go test \
                 /work/internal/common/... \
                 /work/internal/interpreter/...  \
-                /work/internal/interpreter/core/...
+                /work/internal/core/...
 }
