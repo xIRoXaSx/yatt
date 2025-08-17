@@ -21,7 +21,7 @@ env:
     # Docker env vars.
     DOCKER_DIR: ${ROOT}/docker
     DOCKER_IMG_TAG_BUILD: golang:1.23.5-bookworm
-    DOCKER_IMG_TAG: xiroxasx/yatt:latest
+    DOCKER_IMG_TAG: xiroxasx/yatt:${VERSION}
 
     # Golang env vars.
     GOOS:   linux
