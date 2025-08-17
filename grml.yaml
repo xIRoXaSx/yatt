@@ -15,13 +15,13 @@ version: 3
 project: yatt
 
 env:
-    VERSION:  v2.0.0
+    VERSION:  v2.0.1
     BIN_NAME: yatt
 
     # Docker env vars.
     DOCKER_DIR: ${ROOT}/docker
     DOCKER_IMG_TAG_BUILD: golang:1.23.5-bookworm
-    DOCKER_IMG_TAG: yatt:latest
+    DOCKER_IMG_TAG: xiroxasx/yatt:${VERSION}
 
     # Golang env vars.
     GOOS:   linux
