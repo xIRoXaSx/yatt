@@ -43,6 +43,8 @@ const (
 	functionNameStringToLower    = "lower"
 	functionNameStringToUpper    = "upper"
 	functionNameStringLength     = "len"
+
+	functionNameTimeNow = "now"
 )
 
 func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]byte, additionalVars []common.Variable) (ret []byte, err error) {
@@ -131,6 +133,10 @@ func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]by
 		return functions.Length(args, len(c.varRegistryGlobal.entries), func(name string) int {
 			return len(c.varRegistryGlobal.entries[strings.ToLower(name)])
 		})
+
+	// Time.
+	case functionNameTimeNow:
+		return functions.Now(args)
 
 	default:
 		err = errors.New("unknown function")
