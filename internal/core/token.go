@@ -14,7 +14,7 @@ type resolveArgs struct {
 	additionalVars []common.Variable
 }
 
-func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent []byte, buf io.Writer, lineNum int) (err error) {
+func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent []byte, buf io.Writer, lineNum int, additionalVars ...common.Variable) (err error) {
 	prefix := c.matchedPrefixToken(line)
 	if len(prefix) > 0 {
 		// Trim the prefix and check against internal commands.
@@ -35,7 +35,16 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 			lineNum,
 			args,
 			currentLineIndent,
+			additionalVars,
 		)
+
+		if c.feb.IsActive() && !isForeachControlDirective(pd.name) {
+			if c.opts.PreserveIndent {
+				line = append(currentLineIndent, line...)
+			}
+			c.feb.WriteLineToBuffer(line)
+			return nil
+		}
 
 		if !isConditionControlDirective(pd.name) && !c.cb.IsActive() {
 			return nil
@@ -75,8 +84,9 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 	// No prefix found, try to resolve variables and functions if there are any.
 	var ret []byte
 	ret, err = c.resolve(resolveArgs{
-		fileName: fileName,
-		line:     line,
+		fileName:       fileName,
+		line:           line,
+		additionalVars: additionalVars,
 	})
 	if err != nil {
 		return

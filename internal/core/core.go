@@ -136,6 +136,11 @@ func (c *Core) Resolve(fileName string, l []byte, vars ...common.Variable) (ret 
 	})
 }
 
+// EvaluateLine re-runs a buffered foreach line through the normal scanner path.
+func (c *Core) EvaluateLine(fileName string, line, currentLineIndent []byte, dst io.Writer, lineNum int, vars ...common.Variable) error {
+	return c.searchTokensAndExecute(fileName, line, currentLineIndent, dst, lineNum, vars...)
+}
+
 // interpret tries to interpret the scanned content of file.rc.
 // If the ReadCloser content contains available tokens, it tries to resolve them and writes it,
 // along with the prepended indentParent, to buf.

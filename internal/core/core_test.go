@@ -738,6 +738,40 @@ inner-no
 	r.Exactly(t, "outer\ninner-no\ngood\n", buf.String())
 }
 
+func TestConditionInForeach(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var apples = Apples
+# yatt var oranges = Oranges
+# yatt foreach [ {{apples}}, {{oranges}} ]
+# yatt if {{index}} == 1
+{{index}}={{value}}
+{{var(selected, value)}}
+{{selected}}
+# yatt ifend
+{{selected}}
+# yatt foreachend`
+	buf := interpretString(t, input)
+	r.Exactly(t, "\n1=Oranges\n\nOranges\n\n", buf.String())
+}
+
+func TestConditionInNestedForeachCanUseParentLoopVars(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var zero = 0
+# yatt var one = 1
+# yatt foreach [ zero, one ]
+{{var(outerValue, value)}}
+# yatt foreach [ zero, one ]
+# yatt if {{outerValue}} == 1
+outer={{outerValue}} inner={{index}}
+# yatt ifend
+# yatt foreachend
+# yatt foreachend`
+	buf := interpretString(t, input)
+	r.Exactly(t, "\n\nouter=1 inner=0\nouter=1 inner=1\n", buf.String())
+}
+
 func TestConditionMalformed(t *testing.T) {
 	t.Parallel()
 

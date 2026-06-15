@@ -153,6 +153,7 @@ Here is an example (`[]` brackets are optional):
 Conditional blocks can be used to include lines only when an expression matches.  
 Supported comparisons are `==`, `!=`, `>`, `>=`, `<`, and `<=`. Ordered comparisons use numeric values.  
 Single values are treated as true unless they are empty, `false`, `0`, `no`, or `off`.
+Conditions inside `foreach` loops can use loop variables such as `{{index}}`, `{{value}}` and variables created by parent loops.
 
 ```text
 # yatt var mode = prod

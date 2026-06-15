@@ -16,7 +16,7 @@ func (c *Core) conditionIf(pd *PreprocessorDirective) (err error) {
 	for i, arg := range pd.args {
 		condArgs[i] = arg
 	}
-	eval, err := c.cb.IsTrue(pd.fileName, condArgs, c)
+	eval, err := c.cb.IsTrue(pd.fileName, condArgs, c, pd.additionalVars...)
 	if err != nil {
 		return fmt.Errorf("condition isTrue: %v", err)
 	}
@@ -41,7 +41,7 @@ func (c *Core) conditionElseIf(pd *PreprocessorDirective) (err error) {
 	for i, arg := range pd.args {
 		condArgs[i] = arg
 	}
-	eval, err := c.cb.IsTrue(pd.fileName, condArgs, c)
+	eval, err := c.cb.IsTrue(pd.fileName, condArgs, c, pd.additionalVars...)
 	if err != nil {
 		return fmt.Errorf("condition isTrue: %v", err)
 	}

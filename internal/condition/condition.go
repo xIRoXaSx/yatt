@@ -15,14 +15,12 @@ type TokenResolver interface {
 
 type Buffer struct {
 	frames  []frame
-	history map[int]frame
 	nextID  int
 	stateMx *sync.Mutex
 }
 
 type frame struct {
 	id            int
-	parentID      int
 	fileName      string
 	lineNum       int
 	parentActive  bool
@@ -36,7 +34,6 @@ type Arg []byte
 func NewConditionBuffer() Buffer {
 	return Buffer{
 		frames:  make([]frame, 0),
-		history: make(map[int]frame),
 		nextID:  -1,
 		stateMx: &sync.Mutex{},
 	}
@@ -97,10 +94,15 @@ func (b *Buffer) ReverseLoopOrder(stateIdx int) (idxs []int) {
 	b.stateMx.Lock()
 	defer b.stateMx.Unlock()
 
-	f, ok := b.history[stateIdx]
-	for ok && f.parentID > -1 {
-		idxs = append(idxs, f.parentID)
-		f, ok = b.history[f.parentID]
+	for i := len(b.frames) - 1; i >= 0; i-- {
+		if b.frames[i].id != stateIdx {
+			continue
+		}
+
+		for j := i - 1; j >= 0; j-- {
+			idxs = append(idxs, b.frames[j].id)
+		}
+		return
 	}
 
 	return
@@ -111,15 +113,9 @@ func (b *Buffer) PushIf(fileName string, lineNum int, eval bool) {
 	defer b.stateMx.Unlock()
 
 	parentActive := b.isActiveLocked()
-	parentID := -1
-	if len(b.frames) > 0 {
-		parentID = b.frames[len(b.frames)-1].id
-	}
-
 	b.nextID++
 	f := frame{
 		id:            b.nextID,
-		parentID:      parentID,
 		fileName:      fileName,
 		lineNum:       lineNum,
 		parentActive:  parentActive,
@@ -127,7 +123,6 @@ func (b *Buffer) PushIf(fileName string, lineNum int, eval bool) {
 		active:        parentActive && eval,
 	}
 	b.frames = append(b.frames, f)
-	b.history[f.id] = f
 }
 
 func (b *Buffer) ElseIf(eval bool) error {
@@ -144,13 +139,11 @@ func (b *Buffer) ElseIf(eval bool) error {
 	}
 	if f.branchMatched {
 		f.active = false
-		b.history[f.id] = *f
 		return nil
 	}
 
 	f.active = f.parentActive && eval
 	f.branchMatched = eval
-	b.history[f.id] = *f
 	return nil
 }
 
@@ -170,7 +163,6 @@ func (b *Buffer) Else() error {
 	f.active = f.parentActive && !f.branchMatched
 	f.branchMatched = true
 	f.elseSeen = true
-	b.history[f.id] = *f
 	return nil
 }
 

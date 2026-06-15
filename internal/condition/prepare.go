@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 var (
@@ -14,7 +16,7 @@ var (
 	ErrElseIfAfterElse = errors.New("elseif after else")
 )
 
-func (b *Buffer) IsTrue(fileName string, args []Arg, tr TokenResolver) (eval bool, err error) {
+func (b *Buffer) IsTrue(fileName string, args []Arg, tr TokenResolver, vars ...common.Variable) (eval bool, err error) {
 	expr := bytes.TrimSpace(bytes.Join(argsToBytes(args), []byte{' '}))
 	if len(expr) == 0 {
 		return false, errors.New("empty condition")
@@ -35,18 +37,18 @@ func (b *Buffer) IsTrue(fileName string, args []Arg, tr TokenResolver) (eval boo
 			continue
 		}
 
-		left, lErr := resolveOperand(fileName, before, tr)
+		left, lErr := resolveOperand(fileName, before, tr, vars...)
 		if lErr != nil {
 			return false, lErr
 		}
-		right, rErr := resolveOperand(fileName, after, tr)
+		right, rErr := resolveOperand(fileName, after, tr, vars...)
 		if rErr != nil {
 			return false, rErr
 		}
 		return compare(left, right, string(op))
 	}
 
-	value, err := resolveOperand(fileName, expr, tr)
+	value, err := resolveOperand(fileName, expr, tr, vars...)
 	if err != nil {
 		return false, err
 	}
@@ -61,9 +63,9 @@ func argsToBytes(args []Arg) [][]byte {
 	return ret
 }
 
-func resolveOperand(fileName string, raw []byte, tr TokenResolver) (string, error) {
+func resolveOperand(fileName string, raw []byte, tr TokenResolver, vars ...common.Variable) (string, error) {
 	raw = bytes.TrimSpace(raw)
-	resolved, err := tr.Resolve(fileName, raw)
+	resolved, err := tr.Resolve(fileName, raw, vars...)
 	if err != nil {
 		return "", err
 	}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 const (
@@ -22,22 +24,24 @@ const (
 )
 
 type PreprocessorDirective struct {
-	name     string
-	fileName string
-	args     [][]byte
-	indent   []byte
-	lineNum  int
-	buf      *bytes.Buffer
+	name           string
+	fileName       string
+	args           [][]byte
+	indent         []byte
+	lineNum        int
+	additionalVars []common.Variable
+	buf            *bytes.Buffer
 }
 
-func newPreprocessorDirective(name, fileName string, lineNum int, args [][]byte, indent []byte) *PreprocessorDirective {
+func newPreprocessorDirective(name, fileName string, lineNum int, args [][]byte, indent []byte, additionalVars []common.Variable) *PreprocessorDirective {
 	return &PreprocessorDirective{
-		name:     name,
-		fileName: fileName,
-		args:     args,
-		indent:   indent,
-		lineNum:  lineNum,
-		buf:      &bytes.Buffer{},
+		name:           name,
+		fileName:       fileName,
+		args:           args,
+		indent:         indent,
+		lineNum:        lineNum,
+		additionalVars: additionalVars,
+		buf:            &bytes.Buffer{},
 	}
 }
 
@@ -101,6 +105,16 @@ func isConditionControlDirective(name string) bool {
 		directiveNameConditionElseIf,
 		directiveNameConditionElse,
 		directiveNameConditionEnd:
+		return true
+	default:
+		return false
+	}
+}
+
+func isForeachControlDirective(name string) bool {
+	switch name {
+	case directiveNameForeach,
+		directiveNameForeachEnd:
 		return true
 	default:
 		return false
