@@ -1,6 +1,7 @@
 package foreach
 
 import (
+	"io"
 	"sync"
 
 	"github.com/xiroxasx/yatt/internal/common"
@@ -10,6 +11,7 @@ import (
 // looking up, resolving and replacing variable and function tokens with their corresponding value.
 type TokenResolver interface {
 	Resolve(fileName string, l []byte, vars ...common.Variable) (ret []byte, err error)
+	EvaluateLine(fileName string, line, currentLineIndent []byte, dst io.Writer, lineNum int, vars ...common.Variable) error
 	VarLookupRecursive(fileName, name string, untilForeachIdx int) (_ []common.Variable)
 }
 

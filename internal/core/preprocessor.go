@@ -6,34 +6,42 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+
+	"github.com/xiroxasx/yatt/internal/common"
 )
 
 const (
-	directiveNameForeach    = "foreach"
-	directiveNameForeachEnd = "foreachend"
-	directiveNameIgnore     = "ignore"
-	directiveNameIgnoreEnd  = "ignoreend"
-	directiveNameImport     = "import"
-	directiveNameVariable   = "var"
+	directiveNameForeach         = "foreach"
+	directiveNameForeachEnd      = "foreachend"
+	directiveNameIgnore          = "ignore"
+	directiveNameIgnoreEnd       = "ignoreend"
+	directiveNameImport          = "import"
+	directiveNameVariable        = "var"
+	directiveNameConditionIf     = "if"
+	directiveNameConditionElseIf = "elseif"
+	directiveNameConditionElse   = "else"
+	directiveNameConditionEnd    = "ifend"
 )
 
 type PreprocessorDirective struct {
-	name     string
-	fileName string
-	args     [][]byte
-	indent   []byte
-	lineNum  int
-	buf      *bytes.Buffer
+	name           string
+	fileName       string
+	args           [][]byte
+	indent         []byte
+	lineNum        int
+	additionalVars []common.Variable
+	buf            *bytes.Buffer
 }
 
-func newPreprocessorDirective(name, fileName string, lineNum int, args [][]byte, indent []byte) *PreprocessorDirective {
+func newPreprocessorDirective(name, fileName string, lineNum int, args [][]byte, indent []byte, additionalVars []common.Variable) *PreprocessorDirective {
 	return &PreprocessorDirective{
-		name:     name,
-		fileName: fileName,
-		args:     args,
-		indent:   indent,
-		lineNum:  lineNum,
-		buf:      &bytes.Buffer{},
+		name:           name,
+		fileName:       fileName,
+		args:           args,
+		indent:         indent,
+		lineNum:        lineNum,
+		additionalVars: additionalVars,
+		buf:            &bytes.Buffer{},
 	}
 }
 
@@ -56,6 +64,18 @@ func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, 
 	}()
 
 	switch pd.name {
+	case directiveNameConditionIf:
+		return c.conditionIf(pd)
+
+	case directiveNameConditionElseIf:
+		return c.conditionElseIf(pd)
+
+	case directiveNameConditionElse:
+		return c.conditionElse(pd)
+
+	case directiveNameConditionEnd:
+		return c.conditionEnd(pd)
+
 	case directiveNameForeach:
 		return c.foreachStart(pd)
 
@@ -76,6 +96,28 @@ func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, 
 
 	default:
 		return errors.New("unknown preprocessor directive")
+	}
+}
+
+func isConditionControlDirective(name string) bool {
+	switch name {
+	case directiveNameConditionIf,
+		directiveNameConditionElseIf,
+		directiveNameConditionElse,
+		directiveNameConditionEnd:
+		return true
+	default:
+		return false
+	}
+}
+
+func isForeachControlDirective(name string) bool {
+	switch name {
+	case directiveNameForeach,
+		directiveNameForeachEnd:
+		return true
+	default:
+		return false
 	}
 }
 

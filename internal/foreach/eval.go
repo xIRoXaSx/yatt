@@ -1,6 +1,7 @@
 package foreach
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -97,13 +98,8 @@ line:
 			return
 		}
 
-		line := state.lines[bufLn]
-		var resolved []byte
-		resolved, err = tr.Resolve(state.fileName, line, append(vars, common.NewVar("line", strconv.Itoa(ln)))...)
-		if err != nil {
-			return
-		}
-		_, err = dst.Write(resolved)
+		line := bytes.TrimSuffix(state.lines[bufLn], b.lineEnding)
+		err = tr.EvaluateLine(state.fileName, line, nil, dst, ln, append(vars, common.NewVar("line", strconv.Itoa(ln)))...)
 		if err != nil {
 			return
 		}

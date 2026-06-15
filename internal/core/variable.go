@@ -63,6 +63,10 @@ func (c *Core) InitGlobalVariablesByFiles(varFileNames ...string) {
 	}
 }
 
+func (c *Core) setConditionVar(register string, newVar common.Variable) {
+	setRegistryVar(&c.varRegistryCondition, register, newVar)
+}
+
 func (c *Core) setForeachVar(register string, newVar common.Variable) {
 	setRegistryVar(&c.varRegistryForeach, register, newVar)
 }
@@ -105,6 +109,12 @@ func (c *Core) varLookup(file, name string) (v common.Variable) {
 			return
 		}
 	}
+	if c.cb.StateIndex() > -1 {
+		v = c.varLookupCondition(c.cb.StateIndex(), name)
+		if v != nil {
+			return
+		}
+	}
 
 	v = c.varLookupLocal(file, name)
 	if v.Name() != "" {
@@ -140,14 +150,13 @@ func (c *Core) varLookupLocal(register, name string) (v common.Variable) {
 	return varLookupRegistry(&c.varRegistryLocal, register, name)
 }
 
-func (c *Core) varLookupForeach(stateIdx int, name string) (_ common.Variable) {
+func (c *Core) varLookupContained(stateIdx int, name string, containedReg *variableRegistry, idxs []int) (_ common.Variable) {
 	// Allowed to traverse from parent loops but limit to the current state index.
-	idxs := c.feb.ReverseLoopOrder(stateIdx)
 	idxs = append([]int{stateIdx}, idxs...)
 	for i := range idxs {
 		idx := idxs[i]
 		reg := strconv.Itoa(idx)
-		vars := c.varRegistryForeach.entries[reg]
+		vars := containedReg.entries[reg]
 		for _, v := range vars {
 			if v.Name() != name {
 				continue
@@ -158,6 +167,16 @@ func (c *Core) varLookupForeach(stateIdx int, name string) (_ common.Variable) {
 	}
 
 	return
+}
+
+func (c *Core) varLookupCondition(stateIdx int, name string) (_ common.Variable) {
+	idxs := c.cb.ReverseLoopOrder(stateIdx)
+	return c.varLookupContained(stateIdx, name, &c.varRegistryCondition, idxs)
+}
+
+func (c *Core) varLookupForeach(stateIdx int, name string) (_ common.Variable) {
+	idxs := c.feb.ReverseLoopOrder(stateIdx)
+	return c.varLookupContained(stateIdx, name, &c.varRegistryForeach, idxs)
 }
 
 func (c *Core) varLookupRecursive(fileName, name string, foreachStateIdx int) (_ []common.Variable) {

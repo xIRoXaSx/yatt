@@ -41,12 +41,13 @@ Preprocessors can be used to manipulate text before it gets interpreted.
 The prefix `# yatt` or `// yatt` is always required for interpretations.  
 The following table contains all available operations:  
 
-| Preprocessor         | Description                                                                                        | Example                                  |
-|----------------------|----------------------------------------------------------------------------------------------------|------------------------------------------|
-| import               | Import a file into the current template / partial. Paths are always relational to the working dir. | `# yatt import my/test/file.txt`         |
-| var                  | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                            | `# yatt var myVar = 123`                 |
-| ignore / ignoreend   | Starts / ends a ignore block. Lines between these declarations will not be written to the output.  | `# yatt ignore` ... `# yatt ignoreend`   |
-| foreach / foreachend | Loops over each variable until `foreachend`. Use `{{value}}` and `{{index}}` inside the loop.      | `# yatt foreach` ... `# yatt foreachend` |
+| Preprocessor               | Description                                                                                        | Example                                         |
+|----------------------------|----------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| import                     | Import a file into the current template / partial. Paths are always relational to the working dir. | `# yatt import my/test/file.txt`                |
+| var                        | Declare a scoped variable of the name `{Name}` and the value `{Value}`.                            | `# yatt var myVar = 123`                        |
+| ignore / ignoreend         | Starts / ends a ignore block. Lines between these declarations will not be written to the output.  | `# yatt ignore` ... `# yatt ignoreend`          |
+| foreach / foreachend       | Loops over each variable until `foreachend`. Use `{{value}}` and `{{index}}` inside the loop.      | `# yatt foreach` ... `# yatt foreachend`        |
+| if / elseif / else / ifend | Writes only the first matching conditional branch.                                                 | `# yatt if {{mode}} == prod` ... `# yatt ifend` |
 
 ### Variables
 Variables can be declared and used from inside the templated file (local, can only be used inside this file) or via an additional file, 
@@ -146,6 +147,23 @@ Here is an example (`[]` brackets are optional):
       Outer index: {{outerIndex}}, inner index: {{index}}
    # yatt foreachend 
 # yatt foreachend 
+```
+
+### Conditions
+Conditional blocks can be used to include lines only when an expression matches.  
+Supported comparisons are `==`, `!=`, `>`, `>=`, `<`, and `<=`. Ordered comparisons use numeric values.  
+Single values are treated as true unless they are empty, `false`, `0`, `no`, or `off`.
+Conditions inside `foreach` loops can use loop variables such as `{{index}}`, `{{value}}` and variables created by parent loops.
+
+```text
+# yatt var mode = prod
+# yatt if {{mode}} == prod
+  Production mode
+# yatt elseif {{mode}} == staging
+  Staging mode
+# yatt else
+  Other mode
+# yatt ifend
 ```
 
 ### Examples

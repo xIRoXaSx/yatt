@@ -5,10 +5,12 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -681,9 +683,259 @@ func TestForeach(t *testing.T) {
 	r.Exactly(t, "0 * (0 * 1) = 0\n1 * (1 * 2) = 2\n2 * (2 * 3) = 12\n", buf.String())
 }
 
+func TestCondition(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var mode = staging
+# yatt var upperMode = PROD
+# yatt if {{mode}} == prod
+prod
+# yatt elseif {{mode}} == staging
+staging
+# yatt else
+other
+# yatt ifend
+# yatt if {{lower(upperMode)}} == prod
+lower-prod
+# yatt ifend
+# yatt if {{mode}} != staging
+bad
+# yatt ifend
+# yatt if 3 > 2
+numeric
+# yatt ifend
+# yatt if true
+{{var(scoped, yes)}}
+{{scoped}}
+# yatt ifend
+{{scoped}}
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "staging\nlower-prod\nnumeric\n\nyes\n\n", buf.String())
+}
+
+func TestConditionNestedAndInactiveSideEffects(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var outer = yes
+# yatt var inner = no
+# yatt if {{outer}} == yes
+outer
+# yatt if {{inner}} == yes
+inner-yes
+# yatt else
+inner-no
+# yatt ifend
+# yatt if false
+# yatt var selected = bad
+# yatt else
+# yatt var selected = good
+# yatt ifend
+{{selected}}
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "outer\ninner-no\ngood\n", buf.String())
+}
+
+func TestConditionInForeach(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var apples = Apples
+# yatt var oranges = Oranges
+# yatt foreach [ {{apples}}, {{oranges}} ]
+# yatt if {{index}} == 1
+{{index}}={{value}}
+{{var(selected, value)}}
+{{selected}}
+# yatt ifend
+{{selected}}
+# yatt foreachend`
+	buf := interpretString(t, input)
+	r.Exactly(t, "\n1=Oranges\n\nOranges\n\n", buf.String())
+}
+
+func TestConditionInNestedForeachCanUseParentLoopVars(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var zero = 0
+# yatt var one = 1
+# yatt foreach [ zero, one ]
+{{var(outerValue, value)}}
+# yatt foreach [ zero, one ]
+# yatt if {{outerValue}} == 1
+outer={{outerValue}} inner={{index}}
+# yatt ifend
+# yatt foreachend
+# yatt foreachend`
+	buf := interpretString(t, input)
+	r.Exactly(t, "\n\nouter=1 inner=0\nouter=1 inner=1\n", buf.String())
+}
+
+func TestConditionComparisonOperators(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var x = 5
+# yatt if {{x}} >= 5
+gte5
+# yatt ifend
+# yatt if {{x}} >= 6
+gte6
+# yatt ifend
+# yatt if {{x}} <= 5
+lte5
+# yatt ifend
+# yatt if {{x}} <= 4
+lte4
+# yatt ifend
+# yatt if {{x}} < 6
+lt6
+# yatt ifend
+# yatt if {{x}} < 5
+lt5
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "gte5\nlte5\nlt6\n", buf.String())
+}
+
+func TestConditionTruthyValues(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		value  string
+		truthy bool
+	}
+	cases := []testCase{
+		{"true", true},
+		{"yes", true},
+		{"1", true},
+		{"on", true},
+		{"anything", true},
+		{"false", false},
+		{"no", false},
+		{"0", false},
+		{"off", false},
+	}
+
+	for _, tc := range cases {
+		input := "# yatt if " + tc.value + "\nyes\n# yatt ifend\n"
+		buf := interpretString(t, input)
+		if tc.truthy {
+			r.Exactly(t, "yes\n", buf.String(), "value=%q should be truthy", tc.value)
+		} else {
+			r.Exactly(t, "", buf.String(), "value=%q should be falsy", tc.value)
+		}
+	}
+}
+
+func TestConditionMultipleElseIf(t *testing.T) {
+	t.Parallel()
+
+	// Only the matching elseif branch should execute.
+	input := `# yatt var x = 3
+# yatt if {{x}} == 1
+one
+# yatt elseif {{x}} == 2
+two
+# yatt elseif {{x}} == 3
+three
+# yatt elseif {{x}} == 4
+four
+# yatt else
+other
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "three\n", buf.String())
+
+	// Once a branch matches, subsequent elseif and else must be skipped.
+	input2 := `# yatt var x = 1
+# yatt if {{x}} == 1
+one
+# yatt elseif {{x}} == 1
+also one
+# yatt else
+other
+# yatt ifend
+`
+	buf2 := interpretString(t, input2)
+	r.Exactly(t, "one\n", buf2.String())
+}
+
+func TestConditionNestedInactiveBranch(t *testing.T) {
+	t.Parallel()
+
+	// Nested if/elseif/else/ifend inside an inactive parent must be processed
+	// (to maintain the frame stack) but must produce no output.
+	// The outer else branch should still activate normally afterwards.
+	input := `# yatt var outer = no
+# yatt if {{outer}} == yes
+# yatt if true
+inner
+# yatt elseif true
+inner elseif
+# yatt else
+inner else
+# yatt ifend
+# yatt else
+not outer
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "not outer\n", buf.String())
+}
+
+func TestConditionMalformed(t *testing.T) {
+	t.Parallel()
+
+	tests := []string{
+		"# yatt elseif true\n",
+		"# yatt else\n",
+		"# yatt ifend\n",
+		"# yatt if true\n# yatt else\n# yatt else\n# yatt ifend\n",
+		"# yatt if true\n# yatt else\n# yatt elseif true\n# yatt ifend\n",
+		"# yatt if true\n",
+		"# yatt if value > 1\n# yatt ifend\n",
+		// if / elseif require at least one arg.
+		"# yatt if\n# yatt ifend\n",
+		"# yatt if true\n# yatt elseif\n# yatt ifend\n",
+		// else and ifend must not receive args.
+		"# yatt if true\n# yatt else extra\n# yatt ifend\n",
+		"# yatt if true\n# yatt ifend extra\n",
+	}
+
+	for i, input := range tests {
+		l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		c := New(l, []string{"# yatt"}, Options{})
+		buf := &bytes.Buffer{}
+		err := c.Interpret(InterpreterFile{
+			Name: fmt.Sprintf("condition-malformed-%d.txt", i),
+			Buf:  buf,
+			RC:   io.NopCloser(strings.NewReader(input)),
+		})
+		r.Error(t, err, "case=%d", i)
+	}
+}
+
 //
 // Helper
 //
+
+func interpretString(t *testing.T, input string) *bytes.Buffer {
+	t.Helper()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	c := New(l, []string{"# yatt"}, Options{})
+	buf := &bytes.Buffer{}
+	err := c.Interpret(InterpreterFile{
+		Name: "condition.txt",
+		Buf:  buf,
+		RC:   io.NopCloser(strings.NewReader(input)),
+	})
+	r.NoError(t, err)
+	return buf
+}
 
 func floatCompareOK(expected, actual float64) bool {
 	return (math.IsNaN(expected) && math.IsNaN(actual)) ||

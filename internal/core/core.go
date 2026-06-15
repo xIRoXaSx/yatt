@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/xiroxasx/yatt/internal/common"
+	"github.com/xiroxasx/yatt/internal/condition"
 	"github.com/xiroxasx/yatt/internal/foreach"
 )
 
@@ -30,8 +31,11 @@ var (
 	errDependencyUnknownSyntax = fmt.Errorf("unknown syntax: %s <file path>", preprocessorImportName)
 )
 
-// Core must implement the foreach.TokenResolver interface.
-var _ foreach.TokenResolver = &Core{}
+// Core must implement necessary interfaces.
+var (
+	_ foreach.TokenResolver   = &Core{}
+	_ condition.TokenResolver = &Core{}
+)
 
 type Core struct {
 	l        zerolog.Logger
@@ -41,6 +45,7 @@ type Core struct {
 	ignoreIndex  ignoreIndexes
 	depsResolver dependencyResolver
 	feb          foreach.Buffer
+	cb           condition.Buffer
 
 	registries
 
@@ -54,9 +59,10 @@ type Options struct {
 type ignoreIndexes map[string]ignoreState
 
 type registries struct {
-	varRegistryForeach variableRegistry
-	varRegistryLocal   variableRegistry
-	varRegistryGlobal  variableRegistry
+	varRegistryCondition variableRegistry
+	varRegistryForeach   variableRegistry
+	varRegistryLocal     variableRegistry
+	varRegistryGlobal    variableRegistry
 }
 
 type variableRegistry struct {
@@ -97,12 +103,14 @@ func New(l zerolog.Logger, prefixes []string, opts Options) *Core {
 		prefixes:     ps,
 		ignoreIndex:  make(ignoreIndexes, 0),
 		feb:          foreach.NewForeachBuffer(lineEnding),
+		cb:           condition.NewConditionBuffer(),
 		Mutex:        &sync.Mutex{},
 		depsResolver: newDependencyResolver(),
 		registries: registries{
-			varRegistryForeach: newVarReg(),
-			varRegistryLocal:   newVarReg(),
-			varRegistryGlobal:  newVarReg(),
+			varRegistryCondition: newVarReg(),
+			varRegistryForeach:   newVarReg(),
+			varRegistryLocal:     newVarReg(),
+			varRegistryGlobal:    newVarReg(),
 		},
 	}
 }
@@ -126,6 +134,11 @@ func (c *Core) Resolve(fileName string, l []byte, vars ...common.Variable) (ret 
 		line:           l,
 		additionalVars: vars,
 	})
+}
+
+// EvaluateLine re-runs a buffered foreach line through the normal scanner path.
+func (c *Core) EvaluateLine(fileName string, line, currentLineIndent []byte, dst io.Writer, lineNum int, vars ...common.Variable) error {
+	return c.searchTokensAndExecute(fileName, line, currentLineIndent, dst, lineNum, vars...)
 }
 
 // interpret tries to interpret the scanned content of file.rc.
@@ -172,7 +185,7 @@ func (c *Core) interpret(file InterpreterFile, additionalIndent []byte) (err err
 		}
 	}
 
-	return
+	return c.ensureNoOpenConditions(file.Name)
 }
 
 //
