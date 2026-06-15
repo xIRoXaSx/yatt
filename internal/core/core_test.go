@@ -772,6 +772,120 @@ outer={{outerValue}} inner={{index}}
 	r.Exactly(t, "\n\nouter=1 inner=0\nouter=1 inner=1\n", buf.String())
 }
 
+func TestConditionComparisonOperators(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var x = 5
+# yatt if {{x}} >= 5
+gte5
+# yatt ifend
+# yatt if {{x}} >= 6
+gte6
+# yatt ifend
+# yatt if {{x}} <= 5
+lte5
+# yatt ifend
+# yatt if {{x}} <= 4
+lte4
+# yatt ifend
+# yatt if {{x}} < 6
+lt6
+# yatt ifend
+# yatt if {{x}} < 5
+lt5
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "gte5\nlte5\nlt6\n", buf.String())
+}
+
+func TestConditionTruthyValues(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		value  string
+		truthy bool
+	}
+	cases := []testCase{
+		{"true", true},
+		{"yes", true},
+		{"1", true},
+		{"on", true},
+		{"anything", true},
+		{"false", false},
+		{"no", false},
+		{"0", false},
+		{"off", false},
+	}
+
+	for _, tc := range cases {
+		input := "# yatt if " + tc.value + "\nyes\n# yatt ifend\n"
+		buf := interpretString(t, input)
+		if tc.truthy {
+			r.Exactly(t, "yes\n", buf.String(), "value=%q should be truthy", tc.value)
+		} else {
+			r.Exactly(t, "", buf.String(), "value=%q should be falsy", tc.value)
+		}
+	}
+}
+
+func TestConditionMultipleElseIf(t *testing.T) {
+	t.Parallel()
+
+	// Only the matching elseif branch should execute.
+	input := `# yatt var x = 3
+# yatt if {{x}} == 1
+one
+# yatt elseif {{x}} == 2
+two
+# yatt elseif {{x}} == 3
+three
+# yatt elseif {{x}} == 4
+four
+# yatt else
+other
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "three\n", buf.String())
+
+	// Once a branch matches, subsequent elseif and else must be skipped.
+	input2 := `# yatt var x = 1
+# yatt if {{x}} == 1
+one
+# yatt elseif {{x}} == 1
+also one
+# yatt else
+other
+# yatt ifend
+`
+	buf2 := interpretString(t, input2)
+	r.Exactly(t, "one\n", buf2.String())
+}
+
+func TestConditionNestedInactiveBranch(t *testing.T) {
+	t.Parallel()
+
+	// Nested if/elseif/else/ifend inside an inactive parent must be processed
+	// (to maintain the frame stack) but must produce no output.
+	// The outer else branch should still activate normally afterwards.
+	input := `# yatt var outer = no
+# yatt if {{outer}} == yes
+# yatt if true
+inner
+# yatt elseif true
+inner elseif
+# yatt else
+inner else
+# yatt ifend
+# yatt else
+not outer
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "not outer\n", buf.String())
+}
+
 func TestConditionMalformed(t *testing.T) {
 	t.Parallel()
 
@@ -783,6 +897,12 @@ func TestConditionMalformed(t *testing.T) {
 		"# yatt if true\n# yatt else\n# yatt elseif true\n# yatt ifend\n",
 		"# yatt if true\n",
 		"# yatt if value > 1\n# yatt ifend\n",
+		// if / elseif require at least one arg.
+		"# yatt if\n# yatt ifend\n",
+		"# yatt if true\n# yatt elseif\n# yatt ifend\n",
+		// else and ifend must not receive args.
+		"# yatt if true\n# yatt else extra\n# yatt ifend\n",
+		"# yatt if true\n# yatt ifend extra\n",
 	}
 
 	for i, input := range tests {
