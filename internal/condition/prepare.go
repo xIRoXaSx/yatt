@@ -13,7 +13,7 @@ import (
 var (
 	ErrNoOpenCondition = errors.New("no open condition")
 	ErrElseAlreadySeen = errors.New("else already seen")
-	ErrElseIfAfterElse = errors.New("elseif after else")
+	ErrIfElseAfterElse = errors.New("ifelse after else")
 )
 
 func (b *Buffer) IsTrue(fileName string, args []Arg, tr TokenResolver, vars ...common.Variable) (eval bool, err error) {
