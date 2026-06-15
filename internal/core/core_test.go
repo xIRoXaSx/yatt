@@ -5,10 +5,12 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -681,9 +683,105 @@ func TestForeach(t *testing.T) {
 	r.Exactly(t, "0 * (0 * 1) = 0\n1 * (1 * 2) = 2\n2 * (2 * 3) = 12\n", buf.String())
 }
 
+func TestCondition(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var mode = staging
+# yatt var upperMode = PROD
+# yatt if {{mode}} == prod
+prod
+# yatt elseif {{mode}} == staging
+staging
+# yatt else
+other
+# yatt ifend
+# yatt if {{lower(upperMode)}} == prod
+lower-prod
+# yatt ifend
+# yatt if {{mode}} != staging
+bad
+# yatt ifend
+# yatt if 3 > 2
+numeric
+# yatt ifend
+# yatt if true
+{{var(scoped, yes)}}
+{{scoped}}
+# yatt ifend
+{{scoped}}
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "staging\nlower-prod\nnumeric\n\nyes\n\n", buf.String())
+}
+
+func TestConditionNestedAndInactiveSideEffects(t *testing.T) {
+	t.Parallel()
+
+	input := `# yatt var outer = yes
+# yatt var inner = no
+# yatt if {{outer}} == yes
+outer
+# yatt if {{inner}} == yes
+inner-yes
+# yatt else
+inner-no
+# yatt ifend
+# yatt if false
+# yatt var selected = bad
+# yatt else
+# yatt var selected = good
+# yatt ifend
+{{selected}}
+# yatt ifend
+`
+	buf := interpretString(t, input)
+	r.Exactly(t, "outer\ninner-no\ngood\n", buf.String())
+}
+
+func TestConditionMalformed(t *testing.T) {
+	t.Parallel()
+
+	tests := []string{
+		"# yatt elseif true\n",
+		"# yatt else\n",
+		"# yatt ifend\n",
+		"# yatt if true\n# yatt else\n# yatt else\n# yatt ifend\n",
+		"# yatt if true\n# yatt else\n# yatt elseif true\n# yatt ifend\n",
+		"# yatt if true\n",
+		"# yatt if value > 1\n# yatt ifend\n",
+	}
+
+	for i, input := range tests {
+		l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		c := New(l, []string{"# yatt"}, Options{})
+		buf := &bytes.Buffer{}
+		err := c.Interpret(InterpreterFile{
+			Name: fmt.Sprintf("condition-malformed-%d.txt", i),
+			Buf:  buf,
+			RC:   io.NopCloser(strings.NewReader(input)),
+		})
+		r.Error(t, err, "case=%d", i)
+	}
+}
+
 //
 // Helper
 //
+
+func interpretString(t *testing.T, input string) *bytes.Buffer {
+	t.Helper()
+
+	l := log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	c := New(l, []string{"# yatt"}, Options{})
+	buf := &bytes.Buffer{}
+	err := c.Interpret(InterpreterFile{
+		Name: "condition.txt",
+		Buf:  buf,
+		RC:   io.NopCloser(strings.NewReader(input)),
+	})
+	r.NoError(t, err)
+	return buf
+}
 
 func floatCompareOK(expected, actual float64) bool {
 	return (math.IsNaN(expected) && math.IsNaN(actual)) ||

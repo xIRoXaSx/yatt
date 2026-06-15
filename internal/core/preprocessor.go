@@ -9,12 +9,16 @@ import (
 )
 
 const (
-	directiveNameForeach    = "foreach"
-	directiveNameForeachEnd = "foreachend"
-	directiveNameIgnore     = "ignore"
-	directiveNameIgnoreEnd  = "ignoreend"
-	directiveNameImport     = "import"
-	directiveNameVariable   = "var"
+	directiveNameForeach         = "foreach"
+	directiveNameForeachEnd      = "foreachend"
+	directiveNameIgnore          = "ignore"
+	directiveNameIgnoreEnd       = "ignoreend"
+	directiveNameImport          = "import"
+	directiveNameVariable        = "var"
+	directiveNameConditionIf     = "if"
+	directiveNameConditionElseIf = "elseif"
+	directiveNameConditionElse   = "else"
+	directiveNameConditionEnd    = "ifend"
 )
 
 type PreprocessorDirective struct {
@@ -56,6 +60,18 @@ func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, 
 	}()
 
 	switch pd.name {
+	case directiveNameConditionIf:
+		return c.conditionIf(pd)
+
+	case directiveNameConditionElseIf:
+		return c.conditionElseIf(pd)
+
+	case directiveNameConditionElse:
+		return c.conditionElse(pd)
+
+	case directiveNameConditionEnd:
+		return c.conditionEnd(pd)
+
 	case directiveNameForeach:
 		return c.foreachStart(pd)
 
@@ -76,6 +92,18 @@ func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, 
 
 	default:
 		return errors.New("unknown preprocessor directive")
+	}
+}
+
+func isConditionControlDirective(name string) bool {
+	switch name {
+	case directiveNameConditionIf,
+		directiveNameConditionElseIf,
+		directiveNameConditionElse,
+		directiveNameConditionEnd:
+		return true
+	default:
+		return false
 	}
 }
 

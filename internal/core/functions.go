@@ -85,6 +85,13 @@ func (c *Core) executeFunction(funcName parserFunc, fileName string, args [][]by
 				return nil
 			}
 		}
+		if c.cb.StateIndex() > -1 {
+			varSetter = func(name, value []byte) error {
+				reg := strconv.Itoa(c.cb.StateIndex())
+				c.setConditionVar(reg, common.NewVar(string(name), string(value)))
+				return nil
+			}
+		}
 
 		return functions.Var(fileName, args, additionalVars, varSetter)
 

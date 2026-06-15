@@ -36,6 +36,11 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 			args,
 			currentLineIndent,
 		)
+
+		if !isConditionControlDirective(pd.name) && !c.cb.IsActive() {
+			return nil
+		}
+
 		err = c.Preprocess(pd, func(pd *PreprocessorDirective) error {
 			return c.importPath(pd)
 		})
@@ -45,6 +50,10 @@ func (c *Core) searchTokensAndExecute(fileName string, line, currentLineIndent [
 
 		_, err = pd.WriteTo(buf)
 		return
+	}
+
+	if !c.cb.IsActive() {
+		return nil
 	}
 
 	switch c.preprocessorState(fileName) {
