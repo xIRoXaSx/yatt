@@ -65,7 +65,7 @@ func (b *Buffer) HasOpenFramesForFile(fileName string) bool {
 	return false
 }
 
-func (b *Buffer) CanEvaluateElseIf() (bool, error) {
+func (b *Buffer) CanEvaluateIfElse() (bool, error) {
 	b.stateMx.Lock()
 	defer b.stateMx.Unlock()
 
@@ -75,7 +75,7 @@ func (b *Buffer) CanEvaluateElseIf() (bool, error) {
 
 	f := b.frames[len(b.frames)-1]
 	if f.elseSeen {
-		return false, ErrElseIfAfterElse
+		return false, ErrIfElseAfterElse
 	}
 	return f.parentActive && !f.branchMatched, nil
 }
@@ -125,7 +125,7 @@ func (b *Buffer) PushIf(fileName string, lineNum int, eval bool) {
 	b.frames = append(b.frames, f)
 }
 
-func (b *Buffer) ElseIf(eval bool) error {
+func (b *Buffer) IfElse(eval bool) error {
 	b.stateMx.Lock()
 	defer b.stateMx.Unlock()
 
@@ -135,7 +135,7 @@ func (b *Buffer) ElseIf(eval bool) error {
 
 	f := &b.frames[len(b.frames)-1]
 	if f.elseSeen {
-		return ErrElseIfAfterElse
+		return ErrIfElseAfterElse
 	}
 	if f.branchMatched {
 		f.active = false

@@ -690,7 +690,7 @@ func TestCondition(t *testing.T) {
 # yatt var upperMode = PROD
 # yatt if {{mode}} == prod
 prod
-# yatt elseif {{mode}} == staging
+# yatt ifelse {{mode}} == staging
 staging
 # yatt else
 other
@@ -829,18 +829,18 @@ func TestConditionTruthyValues(t *testing.T) {
 	}
 }
 
-func TestConditionMultipleElseIf(t *testing.T) {
+func TestConditionMultipleIfElse(t *testing.T) {
 	t.Parallel()
 
-	// Only the matching elseif branch should execute.
+	// Only the matching ifelse branch should execute.
 	input := `# yatt var x = 3
 # yatt if {{x}} == 1
 one
-# yatt elseif {{x}} == 2
+# yatt ifelse {{x}} == 2
 two
-# yatt elseif {{x}} == 3
+# yatt ifelse {{x}} == 3
 three
-# yatt elseif {{x}} == 4
+# yatt ifelse {{x}} == 4
 four
 # yatt else
 other
@@ -849,11 +849,11 @@ other
 	buf := interpretString(t, input)
 	r.Exactly(t, "three\n", buf.String())
 
-	// Once a branch matches, subsequent elseif and else must be skipped.
+	// Once a branch matches, subsequent ifelse and else must be skipped.
 	input2 := `# yatt var x = 1
 # yatt if {{x}} == 1
 one
-# yatt elseif {{x}} == 1
+# yatt ifelse {{x}} == 1
 also one
 # yatt else
 other
@@ -866,15 +866,15 @@ other
 func TestConditionNestedInactiveBranch(t *testing.T) {
 	t.Parallel()
 
-	// Nested if/elseif/else/ifend inside an inactive parent must be processed
+	// Nested if/ifelse/else/ifend inside an inactive parent must be processed
 	// (to maintain the frame stack) but must produce no output.
 	// The outer else branch should still activate normally afterwards.
 	input := `# yatt var outer = no
 # yatt if {{outer}} == yes
 # yatt if true
 inner
-# yatt elseif true
-inner elseif
+# yatt ifelse true
+inner ifelse
 # yatt else
 inner else
 # yatt ifend
@@ -890,16 +890,16 @@ func TestConditionMalformed(t *testing.T) {
 	t.Parallel()
 
 	tests := []string{
-		"# yatt elseif true\n",
+		"# yatt ifelse true\n",
 		"# yatt else\n",
 		"# yatt ifend\n",
 		"# yatt if true\n# yatt else\n# yatt else\n# yatt ifend\n",
-		"# yatt if true\n# yatt else\n# yatt elseif true\n# yatt ifend\n",
+		"# yatt if true\n# yatt else\n# yatt ifelse true\n# yatt ifend\n",
 		"# yatt if true\n",
 		"# yatt if value > 1\n# yatt ifend\n",
-		// if / elseif require at least one arg.
+		// if / ifelse require at least one arg.
 		"# yatt if\n# yatt ifend\n",
-		"# yatt if true\n# yatt elseif\n# yatt ifend\n",
+		"# yatt if true\n# yatt ifelse\n# yatt ifend\n",
 		// else and ifend must not receive args.
 		"# yatt if true\n# yatt else extra\n# yatt ifend\n",
 		"# yatt if true\n# yatt ifend extra\n",

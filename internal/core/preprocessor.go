@@ -18,7 +18,7 @@ const (
 	directiveNameImport          = "import"
 	directiveNameVariable        = "var"
 	directiveNameConditionIf     = "if"
-	directiveNameConditionElseIf = "elseif"
+	directiveNameConditionIfElse = "ifelse"
 	directiveNameConditionElse   = "else"
 	directiveNameConditionEnd    = "ifend"
 )
@@ -67,8 +67,8 @@ func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, 
 	case directiveNameConditionIf:
 		return c.conditionIf(pd)
 
-	case directiveNameConditionElseIf:
-		return c.conditionElseIf(pd)
+	case directiveNameConditionIfElse:
+		return c.conditionIfElse(pd)
 
 	case directiveNameConditionElse:
 		return c.conditionElse(pd)
@@ -102,7 +102,7 @@ func (c *Core) preprocess(importPathFunc func(pd *PreprocessorDirective) error, 
 func isConditionControlDirective(name string) bool {
 	switch name {
 	case directiveNameConditionIf,
-		directiveNameConditionElseIf,
+		directiveNameConditionIfElse,
 		directiveNameConditionElse,
 		directiveNameConditionEnd:
 		return true

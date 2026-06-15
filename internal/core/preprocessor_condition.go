@@ -24,17 +24,17 @@ func (c *Core) conditionIf(pd *PreprocessorDirective) (err error) {
 	return
 }
 
-func (c *Core) conditionElseIf(pd *PreprocessorDirective) (err error) {
+func (c *Core) conditionIfElse(pd *PreprocessorDirective) (err error) {
 	if len(pd.args) < 1 {
 		return errors.New("at least 1 arg expected")
 	}
 
-	canEvaluate, err := c.cb.CanEvaluateElseIf()
+	canEvaluate, err := c.cb.CanEvaluateIfElse()
 	if err != nil {
 		return err
 	}
 	if !canEvaluate {
-		return c.cb.ElseIf(false)
+		return c.cb.IfElse(false)
 	}
 
 	condArgs := make([]condition.Arg, len(pd.args))
@@ -45,7 +45,7 @@ func (c *Core) conditionElseIf(pd *PreprocessorDirective) (err error) {
 	if err != nil {
 		return fmt.Errorf("condition isTrue: %v", err)
 	}
-	return c.cb.ElseIf(eval)
+	return c.cb.IfElse(eval)
 }
 
 func (c *Core) conditionElse(pd *PreprocessorDirective) (err error) {
