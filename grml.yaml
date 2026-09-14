@@ -15,7 +15,7 @@ version: 3
 project: yatt
 
 env:
-    VERSION:  v2.0.1
+    VERSION:  v2.1.0
     BIN_NAME: yatt
 
     # Docker env vars.
